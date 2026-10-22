@@ -1,0 +1,54 @@
+# Render Blueprint: one web service + Postgres. Secrets (sync: false) are entered once in the Render dashboard.
+# Paid plans on purpose: a free web service sleeps (webhook + scheduled reports would be missed),
+# a free Postgres is deleted after 30 days.
+databases:
+  - name: assistant-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: assistant
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: assistant-db
+          property: connectionString
+      - key: TELEGRAM_MODE
+        value: webhook
+      - key: DEFAULT_TIMEZONE
+        value: Europe/Kyiv
+      - key: PUBLIC_URL
+        sync: false # https://<service>.onrender.com or the custom domain
+      - key: ENCRYPTION_KEY
+        generateValue: true # never change it after the first deploy: stored OAuth tokens are encrypted with it
+      - key: APP_SECRET
+        generateValue: true
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OWNER_TELEGRAM_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: NOTION_TOKEN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
