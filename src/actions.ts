@@ -25,6 +25,8 @@ export type ActionKind = keyof ActionPayloads;
 
 type Executors = { [K in ActionKind]: (s: Services, p: ActionPayloads[K]) => Promise<string> };
 
+const CAL_NAME: Record<Account, string> = { work: 'робочий', personal: 'особистий' };
+
 const requireCalendar = (s: Services) => {
   if (!s.calendar) throw new NotConnected('Google Calendar не підключено');
   return s.calendar;
@@ -80,7 +82,7 @@ export const EXECUTORS: Executors = {
   async 'calendar.create'(s, p) {
     const tz = (await s.settings.get()).timezone;
     const ev = await requireCalendar(s).create(p.account, { title: p.title, start: p.start, end: p.end, timeZone: tz, description: p.description, location: p.location });
-    return `Подію створено в календарі (${p.account}): «${ev.title}».${ev.link ? ` ${ev.link}` : ''}`;
+    return `Подію створено в календарі (${CAL_NAME[p.account]}): «${ev.title}».${ev.link ? ` ${ev.link}` : ''}`;
   },
 
   async 'plan.apply'(s, p) {
@@ -96,7 +98,7 @@ export const EXECUTORS: Executors = {
       );
       n++;
     }
-    return `План дня застосовано: ${n} блок(ів) у календарі (${p.account}).`;
+    return `План дня застосовано: ${n} блок(ів) у календарі (${CAL_NAME[p.account]}).`;
   },
 
   async 'finance.record'(s, p) {
@@ -124,22 +126,23 @@ export const EXECUTORS: Executors = {
 };
 
 /** Confirm button: claim once (a double tap can't run it twice), execute, record the result. */
-export async function runPending(s: Services, id: string): Promise<{ ok: boolean; text: string }> {
+/** `claimed: false` = someone already handled it (double tap / other device): nothing ran. */
+export async function runPending(s: Services, id: string): Promise<{ ok: boolean; text: string; claimed: boolean }> {
   const action = await s.pending.claim(id);
-  if (!action) return { ok: false, text: 'Цю дію вже оброблено або вона застаріла.' };
+  if (!action) return { ok: false, text: 'Цю дію вже оброблено або вона застаріла.', claimed: false };
   const exec = EXECUTORS[action.kind as ActionKind] as ((s: Services, p: unknown) => Promise<string>) | undefined;
   if (!exec) {
     await s.pending.finish(id, 'failed', 'unknown kind');
-    return { ok: false, text: `Невідомий тип дії: ${action.kind}` };
+    return { ok: false, text: `Невідомий тип дії: ${action.kind}`, claimed: true };
   }
   try {
     const text = await exec(s, action.payload);
     await s.pending.finish(id, 'done', text);
-    return { ok: true, text };
+    return { ok: true, text, claimed: true };
   } catch (e) {
     const msg = errMsg(e);
     s.log.error('action_failed', { kind: action.kind, error: msg.slice(0, 300) });
     await s.pending.finish(id, 'failed', msg);
-    return { ok: false, text: `Не вдалося виконати: ${msg}` };
+    return { ok: false, text: `Не вдалося виконати: ${msg}`, claimed: true };
   }
 }

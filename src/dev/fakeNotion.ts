@@ -1,7 +1,7 @@
-import type { NotionApi } from '../../src/notion/client.js';
-import type { NotionSchema } from '../../src/notion/schema.js';
+import type { NotionApi } from '../notion/client.js';
+import type { NotionSchema } from '../notion/schema.js';
 
-/** Tiny in-memory Notion: pages in databases, the filter subset the repo uses, write->read property conversion. */
+/** Tiny in-memory Notion (tests and `npm run demo`): pages in databases, the filter subset the repo uses, write->read property conversion. */
 export class FakeNotion implements NotionApi {
   pages = new Map<string, any>();
   dbOf = new Map<string, string>();

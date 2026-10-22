@@ -6,6 +6,7 @@ import { log } from './lib/log.js';
 import { startScheduler } from './scheduler.js';
 import { buildServer } from './server.js';
 import { createBot } from './telegram/bot.js';
+import { registerWeb } from './web/api.js';
 
 const cfg = loadConfig();
 const db = createPgDb(cfg.DATABASE_URL);
@@ -13,10 +14,12 @@ const applied = await migrate(db);
 if (applied.length) log.info('migrations_applied', { applied });
 
 const services = createServices(cfg, db);
-const bot = createBot(services, new Agent(services));
+const agent = new Agent(services);
+const bot = createBot(services, agent);
 await bot.init();
 
 const server = buildServer(services, bot);
+await registerWeb(server, services, agent);
 await server.listen({ port: cfg.PORT, host: '0.0.0.0' });
 log.info('listening', { port: cfg.PORT, mode: cfg.TELEGRAM_MODE });
 

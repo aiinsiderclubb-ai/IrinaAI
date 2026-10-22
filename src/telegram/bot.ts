@@ -2,7 +2,9 @@ import { Bot, InlineKeyboard, InputFile, type Context } from 'grammy';
 import { DateTime } from 'luxon';
 import { runPending } from '../actions.js';
 import type { Agent, AgentReply } from '../agent/agent.js';
+import { baseUrl } from '../config.js';
 import { signState } from '../lib/crypto.js';
+import { createLoginToken } from '../web/auth.js';
 import { errMsg } from '../lib/log.js';
 import { classifyImport } from '../modules/importer.js';
 import { buildEveningReport, buildMorningReport } from '../modules/reports.js';
@@ -142,16 +144,14 @@ export function createBot(s: Services, agent: Agent): Bot {
   bot.command('start', (ctx) =>
     ctx.reply(
       'Привіт! Я ваш персональний асистент. Пишіть або надсилайте голосові: задачі, календар, фінанси, звіти.\n\n' +
-        '/connect — підключити Google та Instagram\n/status — стан підключень\n/morning, /evening — звіти зараз\n/plan — план дня\n/metrics — Instagram і YouTube\n/events — підбірка подій\n/voice — режим голосових відповідей\n\n' +
+        '/connect — підключити Google та Instagram\n/web — увійти у веб-кабінет\n/status — стан підключень\n/morning, /evening — звіти зараз\n/plan — план дня\n/metrics — Instagram і YouTube\n/events — підбірка подій\n/voice — режим голосових відповідей\n\n' +
         'Перешліть сюди відповідь ChatGPT/Dot або файл — розкладу за проєктами.',
     ),
   );
-  bot.command('help', (ctx) => ctx.reply('Просто напишіть, що потрібно, голосом або текстом. Команди: /connect /status /morning /evening /plan /metrics /events /voice'));
+  bot.command('help', (ctx) => ctx.reply('Просто напишіть, що потрібно, голосом або текстом. Команди: /web /connect /status /morning /evening /plan /metrics /events /voice'));
 
   bot.command('connect', async (ctx) => {
     const kb = new InlineKeyboard();
-    const base = cfg.PUBLIC_URL;
-    if (!base) return void (await ctx.reply('PUBLIC_URL не задано — OAuth недоступний.'));
     const state = (slot: string) => signState({ slot, owner: String(ownerId) }, cfg.APP_SECRET);
     if (s.googleAuth) {
       kb.url('Google Calendar (робочий)', s.googleAuth.authUrl('google:work', state('google:work'))).row();
@@ -160,6 +160,13 @@ export function createBot(s: Services, agent: Agent): Bot {
     }
     if (s.instagram) kb.url('Instagram', s.instagram.authUrl(state('instagram'))).row();
     await ctx.reply('Оберіть, що підключити (посилання діє 15 хв). Google може показати «непідтверджений застосунок» — натисніть «Додатково → Перейти».', { reply_markup: kb });
+  });
+
+  bot.command('web', async (ctx) => {
+    const token = await createLoginToken(s.db);
+    // token in the URL fragment: never sent to the server or to Telegram's link previewer
+    const url = `${baseUrl(cfg)}/#/login?token=${token}`;
+    await ctx.reply(`Вхід у веб-кабінет (одноразове посилання, 10 хв):\n${url}`, { link_preview_options: { is_disabled: true } });
   });
 
   bot.command('status', async (ctx) => {
@@ -247,7 +254,7 @@ export function createBot(s: Services, agent: Agent): Bot {
       await edit(`⏳ Виконую…`);
       const r = await runPending(s, id);
       await edit(`${r.ok ? '✅' : '⚠️'} ${esc(r.text)}`);
-      await s.messages.add(ctx.chat?.id ?? ownerId, 'assistant', `${r.ok ? 'Підтверджено і виконано' : 'Помилка виконання'}: ${r.text}`);
+      if (r.claimed) await s.messages.add(ctx.chat?.id ?? ownerId, 'assistant', `${r.ok ? 'Підтверджено і виконано' : 'Помилка виконання'}: ${r.text}`);
       return;
     }
     if (action === 'no') {

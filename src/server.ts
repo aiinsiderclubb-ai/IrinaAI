@@ -21,7 +21,7 @@ const page = (title: string, body: string) =>
   `<body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem"><h2>${title}</h2><p>${body}</p>`;
 
 export function buildServer(s: Services, bot: Bot, queue = new SerialQueue()): FastifyInstance {
-  const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 });
+  const app = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024, trustProxy: true });
 
   app.get('/health', async (_req, reply) => {
     try {

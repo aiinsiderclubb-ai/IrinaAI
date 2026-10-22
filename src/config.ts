@@ -37,6 +37,9 @@ const schema = z.object({
 
   META_APP_ID: opt(z.string()),
   META_APP_SECRET: opt(z.string()),
+
+  /** optional second way into the web UI besides the one-time link from the bot (/web) */
+  WEB_PASSWORD: opt(z.string().min(10)),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -52,4 +55,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('TELEGRAM_MODE=webhook requires PUBLIC_URL and TELEGRAM_WEBHOOK_SECRET');
   }
   return cfg;
+}
+
+/** Where the owner opens the web UI and OAuth returns to. */
+export function baseUrl(cfg: Config): string {
+  return (cfg.PUBLIC_URL ?? `http://localhost:${cfg.PORT}`).replace(/\/$/, '');
 }

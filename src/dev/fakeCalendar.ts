@@ -1,4 +1,4 @@
-import type { Account, CalEvent, CalendarPort, NewEvent } from '../../src/integrations/google-calendar.js';
+import type { Account, CalEvent, CalendarPort, NewEvent } from '../integrations/google-calendar.js';
 
 export class FakeCalendar implements CalendarPort {
   events: Record<Account, CalEvent[]> = { work: [], personal: [] };

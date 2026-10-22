@@ -32,6 +32,8 @@ services:
         generateValue: true
       - key: TELEGRAM_WEBHOOK_SECRET
         generateValue: true
+      - key: WEB_PASSWORD
+        sync: false # optional; leave empty to log in only via /web in the bot
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: OWNER_TELEGRAM_ID

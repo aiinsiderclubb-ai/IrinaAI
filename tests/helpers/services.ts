@@ -9,8 +9,8 @@ import { MessageStore } from '../../src/store/messages.js';
 import { PendingStore } from '../../src/store/pending.js';
 import { DEFAULT_SETTINGS, SettingsStore, type Settings } from '../../src/store/settings.js';
 import { TokenStore } from '../../src/store/tokens.js';
-import { FakeCalendar } from './fakeCalendar.js';
-import { FakeNotion, TEST_SCHEMA } from './fakeNotion.js';
+import { FakeCalendar } from '../../src/dev/fakeCalendar.js';
+import { FakeNotion, TEST_SCHEMA } from '../../src/dev/fakeNotion.js';
 
 /** Scripted model: each element answers one `chat` call. */
 export class ScriptedLlm implements Llm {

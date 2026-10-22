@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NotionRepo } from '../src/notion/repo.js';
 import { discoverTasksSchema, type NotionDatabaseMeta, type NotionSchema } from '../src/notion/schema.js';
 import { setupNotion } from '../src/notion/setup.js';
-import { FakeNotion, TEST_SCHEMA } from './helpers/fakeNotion.js';
+import { FakeNotion, TEST_SCHEMA } from '../src/dev/fakeNotion.js';
 
 describe('schema discovery', () => {
   const db: NotionDatabaseMeta = {

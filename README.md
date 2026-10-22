@@ -5,6 +5,11 @@ two Google calendars, morning/evening reports, personal finance, Instagram/YouTu
 
 Plan and contract analysis: [PLAN.md](PLAN.md).
 
+Two front doors to the same assistant: the **Telegram bot** and a **web cabinet** (served by the same Render service at `PUBLIC_URL`).
+Both use one agent, one conversation history and the same confirmation gate.
+
+> The web cabinet is outside Appendix 1 of the contract ("веб-панель … — додаткові роботи", §2.3): agree it with the client as additional work.
+
 ## How it works
 
 ```
@@ -42,6 +47,33 @@ Design rules that come straight from the contract:
 | 6 Instagram & YouTube | `integrations/instagram.ts`, `youtube.ts`, `modules/social.ts` |
 | 7 ChatGPT & Dot | forwarded message / file / `gpt:` prefix → `modules/importer.ts` → «Матеріали» |
 | 8 Events | `modules/events.ts` (OpenAI web search, dedupe, weekly job) |
+
+## Web cabinet
+
+| Screen | What it shows / does |
+|---|---|
+| Сьогодні | both calendars (mirrors hidden, conflicts flagged), focus tasks, expected replies, week deadlines, pending confirmations, morning/evening report on demand, "plan my day" |
+| Асистент | chat with the agent, voice from the browser mic (reply played back via ElevenLabs), confirm/cancel cards, paste a ChatGPT/Dot answer "as material" |
+| Задачі | tasks by project from Notion, quick add (duplicate guard), complete |
+| Фінанси | month totals per currency, expenses by category, all records |
+| Соцмережі | latest Instagram/YouTube snapshot with 7-day delta |
+| Налаштування | integration status + connect buttons, report times, voice mode, events topics |
+
+Login: send **/web** to the bot → one-time link (10 min, token in the URL fragment so link previews can't use it) → httpOnly signed
+cookie for 30 days. Optional `WEB_PASSWORD` adds a password form (5 attempts / 15 min). Mutating API calls require an
+`X-Requested-With: aia` header (CSRF) on top of `SameSite=Lax`.
+
+Code: `src/web/*` (API + auth), `web/` (React + Vite SPA, built into `dist/web` and served by Fastify).
+
+### Try it without any keys
+
+```bash
+npm run build && npm run demo     # http://localhost:3000, login link and password are printed
+npm run demo & npm run dev:web    # hot reload on http://localhost:5173
+```
+
+The demo runs on in-memory Postgres with a fake Notion and calendar filled with sample data. Without `OPENAI_API_KEY` the
+"model" is a keyword stub (plan day, add task, "мінус 20 доларів таксі", spending this month); with the key the real agent runs on the fake data.
 
 ## Local development
 
@@ -87,10 +119,10 @@ The scheduler runs inside the web process, so the service must stay on a paid in
 
 ## What is verified and what is not
 
-Verified by automated tests (`npm test`, 59 tests): confirmation gate and double-tap safety, duplicate guard, task/finance/decision flows
+Verified by automated tests (`npm test`, 72 tests): confirmation gate and double-tap safety, duplicate guard, task/finance/decision flows
 against an in-memory Notion, conflicts / free slots / day planning / reschedule, two-way calendar mirror without ping-pong, report
 sections and fallbacks, scheduler windows, retries and the 25.10 DST switch, event parsing/dedupe, webhook secret/dedupe/ordering,
-OAuth state signing, token encryption, and the same flows on a real PostgreSQL 16.
+OAuth state signing, token encryption, web login (one-time link, password limit, CSRF), web chat/confirm/import/today/tasks/finance/settings endpoints, and the same flows on a real PostgreSQL 16. The web UI was also clicked through in a browser in demo mode (desktop and phone width, light and dark).
 
 **Not yet exercised against the live services** (no credentials were available): Notion API, Google Calendar/YouTube, Instagram Graph,
 OpenAI (chat/transcription/web search), ElevenLabs, Telegram. The request shapes follow the public docs but need a first run on the

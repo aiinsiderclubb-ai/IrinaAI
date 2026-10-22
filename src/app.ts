@@ -1,4 +1,4 @@
-import type { Config } from './config.js';
+import { baseUrl, type Config } from './config.js';
 import type { Db } from './db/index.js';
 import { GoogleAuth } from './integrations/google-auth.js';
 import { GoogleCalendar } from './integrations/google-calendar.js';
@@ -21,7 +21,7 @@ export function createServices(cfg: Config, db: Db): Services {
   const clock = systemClock;
   const settings = new SettingsStore(db, DEFAULT_SETTINGS(cfg.DEFAULT_TIMEZONE));
   const tokens = new TokenStore(db, cfg.ENCRYPTION_KEY);
-  const base = cfg.PUBLIC_URL?.replace(/\/$/, '');
+  const base = baseUrl(cfg);
 
   const googleAuth =
     cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_SECRET && base
