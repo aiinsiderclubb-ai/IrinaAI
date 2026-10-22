@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
 import { IconChat, IconLogo, IconMic, IconMoney, IconSettings, IconSocial, IconTasks, IconToday } from './icons';
@@ -9,13 +9,14 @@ import { SettingsScreen } from './screens/Settings';
 import { Social } from './screens/Social';
 import { Tasks } from './screens/Tasks';
 import { TodayScreen } from './screens/Today';
-import { Voice } from './screens/Voice';
+// three.js is heavy: load the core only when it is opened
+const Core = lazy(() => import('./screens/Core').then((m) => ({ default: m.Core })));
 import { useNudges } from './nudges';
 import { Loading, ToastHost } from './ui';
 
 const ROUTES = [
   { path: 'today', label: 'Сьогодні', short: 'Сьогодні', icon: IconToday },
-  { path: 'voice', label: 'Голос', short: 'Голос', icon: IconMic },
+  { path: 'voice', label: 'Ядро', short: 'Ядро', icon: IconMic },
   { path: 'chat', label: 'Чат', short: 'Чат', icon: IconChat },
   { path: 'tasks', label: 'Задачі', short: 'Задачі', icon: IconTasks },
   { path: 'finance', label: 'Фінанси', short: 'Фінанси', icon: IconMoney },
@@ -69,6 +70,15 @@ export function App() {
     );
 
   const current: Route = (ROUTES.find((r) => r.path === route)?.path ?? 'today') as Route;
+  // the core is immersive: full screen, no navigation chrome
+  if (current === 'voice')
+    return (
+      <ToastHost>
+        <Suspense fallback={<div className="core" />}>
+          <Core onChanged={refreshPending} />
+        </Suspense>
+      </ToastHost>
+    );
   return (
     <ToastHost>
       <div className="shell">
@@ -91,7 +101,6 @@ export function App() {
         </nav>
         <main className="main">
           {current === 'today' && <TodayScreen onChanged={refreshPending} />}
-          {current === 'voice' && <Voice onChanged={refreshPending} />}
           {current === 'chat' && <Chat onChanged={refreshPending} />}
           {current === 'tasks' && <Tasks />}
           {current === 'finance' && <Finance />}

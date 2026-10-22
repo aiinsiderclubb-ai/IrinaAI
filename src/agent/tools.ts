@@ -244,8 +244,30 @@ export function buildTools(): Tool[] {
       const from = parseLocal(a.from, zone);
       const to = /^\d{4}-\d{2}-\d{2}$/.test(a.to) ? parseLocal(a.to, zone).endOf('day') : parseLocal(a.to, zone);
       const r = await listAllEvents(s, from.toISO()!, to.toISO()!);
+      const now = s.clock().getTime();
+      // timing is computed here, not by the model ("what's next?" must not be guessed)
       return {
-        events: r.events.filter((e) => !e.mirror).map((e) => ({ calendar: e.account, title: e.title, start: e.start, end: e.end, allDay: e.allDay, location: e.location })),
+        now: DateTime.fromJSDate(s.clock(), { zone }).toFormat('yyyy-LL-dd HH:mm'),
+        events: r.events
+          .filter((e) => !e.mirror)
+          .map((e) => {
+            const st = new Date(e.start).getTime();
+            const en = new Date(e.end).getTime();
+            const status = e.allDay ? 'all_day' : en <= now ? 'past' : st <= now ? 'ongoing' : 'upcoming';
+            return {
+              calendar: e.account,
+              title: e.title,
+              start: e.allDay ? e.start : DateTime.fromMillis(st, { zone }).toFormat('yyyy-LL-dd HH:mm'),
+              end: e.allDay ? e.end : DateTime.fromMillis(en, { zone }).toFormat('HH:mm'),
+              status,
+              starts_in_min: status === 'upcoming' ? Math.round((st - now) / 60_000) : undefined,
+              location: e.location,
+            };
+          }),
+        next: (() => {
+          const n = r.events.find((e) => !e.mirror && !e.allDay && new Date(e.start).getTime() > now);
+          return n ? `${n.title} о ${DateTime.fromISO(n.start, { zone }).toFormat('HH:mm')}` : null;
+        })(),
         errors: r.errors,
       };
     },

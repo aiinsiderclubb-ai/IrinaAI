@@ -154,3 +154,24 @@ describe('proactive nudges', () => {
     expect(items.map((n: { text: string }) => n.text)).toEqual(['Через 10 хв — «Зустріч з фондом».']);
   });
 });
+
+describe('calendar timing for "what is next"', () => {
+  it('marks past / ongoing / upcoming and names the next event', async () => {
+    const env = await makeEnv({ now: '2026-10-23T11:57:00Z' }); // 14:57 Kyiv
+    env.calendar.add('work', { title: 'Нарада', start: '2026-10-23T11:00:00+03:00', end: '2026-10-23T12:00:00+03:00' });
+    env.calendar.add('work', { title: 'Рев’ю', start: '2026-10-23T15:00:00+03:00', end: '2026-10-23T16:00:00+03:00' });
+    env.calendar.add('personal', { title: 'Тренування', start: '2026-10-23T19:00:00+03:00', end: '2026-10-23T20:00:00+03:00' });
+    let out: any;
+    env.llm.script.push(toolCall('calendar_list', { from: '2026-10-23', to: '2026-10-23' }), (m) => {
+      out = JSON.parse(String((m.at(-1) as { content: string }).content));
+      return say('ok');
+    });
+    await new Agent(env.s).handle(42, 'що далі?');
+    expect(out.next).toBe('Рев’ю о 15:00');
+    expect(out.events.map((e: any) => [e.title, e.status, e.starts_in_min])).toEqual([
+      ['Нарада', 'past', undefined],
+      ['Рев’ю', 'upcoming', 3],
+      ['Тренування', 'upcoming', 243],
+    ]);
+  });
+});
