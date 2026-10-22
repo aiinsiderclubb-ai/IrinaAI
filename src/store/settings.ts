@@ -4,6 +4,10 @@ import { kvGet, kvSet } from './kv.js';
 
 export interface Settings {
   timezone: string;
+  /** the assistant's own name; also the wake word in hands-free voice mode */
+  assistantName: string;
+  /** how the assistant addresses the owner ("ти" + name) */
+  ownerName: string;
   language: 'uk' | 'ru' | 'en';
   morningTime: string;
   eveningTime: string;
@@ -28,6 +32,8 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   timezone,
+  assistantName: 'Асистент',
+  ownerName: '',
   language: 'uk',
   morningTime: '08:00',
   eveningTime: '20:00',

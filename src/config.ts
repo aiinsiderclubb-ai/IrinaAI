@@ -24,6 +24,12 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4.1'),
   OPENAI_TRANSCRIBE_MODEL: z.string().default('gpt-4o-transcribe'),
   OPENAI_SEARCH_MODEL: z.string().default('gpt-4.1'),
+  /** live voice dialog in the web cabinet (speech-to-speech) */
+  OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime'),
+  OPENAI_REALTIME_VOICE: z.string().default('marin'),
+  /** voice replies when ElevenLabs is not configured */
+  OPENAI_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
+  OPENAI_TTS_VOICE: z.string().default('marin'),
 
   ELEVENLABS_API_KEY: opt(z.string()),
   ELEVENLABS_VOICE_ID: opt(z.string()),

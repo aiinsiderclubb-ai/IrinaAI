@@ -47,3 +47,28 @@ export function plainForSpeech(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/** OpenAI speech (works with the client's existing OpenAI key; ElevenLabs is optional). */
+export class OpenAiTts implements Tts {
+  constructor(
+    private apiKey: string,
+    private model = 'gpt-4o-mini-tts',
+    private voice = 'marin',
+  ) {}
+
+  async speak(text: string): Promise<Uint8Array> {
+    const res = await http('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.apiKey}` },
+      json: {
+        model: this.model,
+        voice: this.voice,
+        input: text.slice(0, 3800),
+        instructions: 'Говори українською природно, тепло і впевнено, в помірному темпі, як особистий асистент.',
+        response_format: 'mp3',
+      },
+      timeoutMs: 60_000,
+    });
+    return new Uint8Array(await res.arrayBuffer());
+  }
+}

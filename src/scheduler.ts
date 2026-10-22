@@ -5,6 +5,7 @@ import { GoogleAuthError } from './integrations/google-auth.js';
 import { errMsg } from './lib/log.js';
 import { atTime } from './lib/time.js';
 import { formatEvents, searchEvents } from './modules/events.js';
+import { runNudges } from './modules/nudges.js';
 import { buildEveningReport, buildMorningReport } from './modules/reports.js';
 import { saveSnapshot } from './modules/social.js';
 import { connectedAccounts, esc, type Services } from './services.js';
@@ -77,6 +78,14 @@ export function buildJobs(): Job[] {
       },
     },
     {
+      // proactive: meeting soon, reply overdue, deadline today. Web picks them up from the table.
+      name: 'nudges',
+      due: (now) => String(Math.floor(now.toMillis() / 60_000)),
+      run: async (s) => {
+        for (const n of await runNudges(s)) await s.notify(`🔔 ${esc(n.text)}`);
+      },
+    },
+    {
       name: 'calendar_sync',
       due: (now) => String(Math.floor(now.toMillis() / 300_000)),
       run: async (s) => {
@@ -141,6 +150,7 @@ export function buildJobs(): Job[] {
         await s.messages.prune(30);
         await s.pending.expireOlderThan(48);
         await s.db.query(`DELETE FROM job_runs WHERE updated_at < now() - interval '14 days'`);
+        await s.db.query(`DELETE FROM nudges WHERE created_at < now() - interval '30 days'`);
       },
     },
   ];
@@ -164,7 +174,7 @@ export async function tick(s: Services, jobs: Job[] = buildJobs()): Promise<stri
       const msg = errMsg(e);
       s.log.error('job_failed', { job: job.name, attempt, error: msg.slice(0, 300) });
       await finishJob(s.db, job.name, period, msg.slice(0, 500));
-      if (attempt >= 3 && job.name !== 'calendar_sync') {
+      if (attempt >= 3 && job.name !== 'calendar_sync' && job.name !== 'nudges') {
         await s.notify(`⚠️ Не вдалося виконати «${esc(job.name)}»: ${esc(msg.slice(0, 200))}`).catch(() => {});
       }
     }

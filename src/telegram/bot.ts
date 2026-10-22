@@ -4,6 +4,7 @@ import { runPending } from '../actions.js';
 import type { Agent, AgentReply } from '../agent/agent.js';
 import { baseUrl } from '../config.js';
 import { signState } from '../lib/crypto.js';
+import { transcriptionHint } from '../lib/wake.js';
 import { createLoginToken } from '../web/auth.js';
 import { errMsg } from '../lib/log.js';
 import { classifyImport } from '../modules/importer.js';
@@ -212,7 +213,8 @@ export function createBot(s: Services, agent: Agent): Bot {
     if (v.file_size && v.file_size > MAX_FILE_BYTES) return void (await ctx.reply('Голосове задовге.'));
     await ctx.api.sendChatAction(ctx.chat.id, 'typing').catch(() => {});
     const audio = await s.downloadFile!(v.file_id);
-    const text = await s.llm.transcribe(audio, 'voice.ogg', v.mime_type ?? 'audio/ogg', (await s.settings.get()).language);
+    const st = await s.settings.get();
+    const text = await s.llm.transcribe(audio, 'voice.ogg', v.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
     if (!text) return void (await ctx.reply('Не вдалося розпізнати голос. Спробуйте ще раз.'));
     await ctx.reply(`🎙 ${text}`);
     await ask(ctx.chat.id, text, true);

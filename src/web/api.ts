@@ -7,7 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { runPending } from '../actions.js';
-import type { Agent, AgentReply } from '../agent/agent.js';
+import { Agent, type AgentReply } from '../agent/agent.js';
+import { buildVoiceTools } from '../agent/tools.js';
+import { isAddressed, transcriptionHint } from '../lib/wake.js';
+import { kvGet, kvSet } from '../store/kv.js';
 import { signState } from '../lib/crypto.js';
 import { errMsg } from '../lib/log.js';
 import { HHMM } from '../lib/time.js';
@@ -20,6 +23,7 @@ import { diffTotals } from '../modules/social.js';
 import type { SocialData } from '../integrations/social-types.js';
 import type { Services } from '../services.js';
 import type { PendingAction } from '../store/pending.js';
+import { registerRealtime, type SecretFactory } from './realtime.js';
 import { AttemptLimiter, consumeLoginToken, isValidSession, issueSession, passwordMatches, SESSION_COOKIE, SESSION_DAYS } from './auth.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,6 +38,8 @@ const replyJson = (r: AgentReply) => ({ text: r.text, proposals: r.proposals.map
 
 const settingsPatch = z
   .object({
+    assistantName: z.string().trim().min(1).max(40),
+    ownerName: z.string().trim().max(40),
     morningTime: z.string().regex(HHMM),
     eveningTime: z.string().regex(HHMM),
     workdayStart: z.string().regex(HHMM),
@@ -54,6 +60,8 @@ const AUDIO_EXT: Record<string, string> = { 'audio/webm': 'webm', 'audio/ogg': '
 export interface WebOptions {
   /** serve the built SPA (off in tests) */
   serveStatic?: boolean;
+  /** Realtime voice key factory (faked in tests) */
+  realtimeSecret?: SecretFactory;
 }
 
 /**
@@ -65,6 +73,16 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   const { cfg } = s;
   const ownerId = cfg.OWNER_TELEGRAM_ID;
   const limiter = new AttemptLimiter();
+  const voiceAgent = new Agent(s, buildVoiceTools(), 'voice');
+  const speech = async (text: string): Promise<string | undefined> => {
+    if (!s.tts || !text) return undefined;
+    try {
+      return Buffer.from(await s.tts.speak(plainForSpeech(text).slice(0, 1200))).toString('base64');
+    } catch (e) {
+      s.log.warn('tts_failed', { error: errMsg(e).slice(0, 200) });
+      return undefined;
+    }
+  };
   await app.register(cookie);
 
   app.addContentTypeParser(/^audio\//, { parseAs: 'buffer', bodyLimit: 20 * 1024 * 1024 }, (_req, body, done) => done(null, body));
@@ -125,23 +143,41 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
     return replyJson(await agent.handle(ownerId, text));
   });
 
-  app.post('/api/voice', async (req, reply) => {
+  /**
+   * Voice turn without Realtime: transcribe -> agent -> speech.
+   * `conversation=1`: the voice agent (spoken confirmations), reply always spoken.
+   * `handsFree=1`: answer only when called by name, or right after the assistant spoke (`follow=1`).
+   */
+  app.post<{ Querystring: { conversation?: string; handsFree?: string; follow?: string } }>('/api/voice', async (req, reply) => {
     const audio = req.body as Buffer | undefined;
     const mime = String(req.headers['content-type'] ?? '').split(';')[0]!;
     if (!audio?.length) return reply.code(400).send({ error: 'empty' });
     const st = await s.settings.get();
-    const transcript = await s.llm.transcribe(new Uint8Array(audio), `voice.${AUDIO_EXT[mime] ?? 'webm'}`, mime, st.language);
-    if (!transcript) return { transcript: '', text: 'Не вдалося розпізнати голос. Спробуйте ще раз.', proposals: [] };
-    const r = await agent.handle(ownerId, transcript);
-    let audioB64: string | undefined;
-    if (s.tts && st.voiceReplies !== 'never' && r.text && r.text.length <= 900 && !r.proposals.length) {
-      try {
-        audioB64 = Buffer.from(await s.tts.speak(plainForSpeech(r.text))).toString('base64');
-      } catch (e) {
-        s.log.warn('tts_failed', { error: errMsg(e).slice(0, 200) });
-      }
-    }
-    return { transcript, ...replyJson(r), audio: audioB64 };
+    const conversation = req.query.conversation === '1';
+    const transcript = await s.llm.transcribe(new Uint8Array(audio), `voice.${AUDIO_EXT[mime] ?? 'webm'}`, mime, st.language, transcriptionHint(st.assistantName));
+    if (!transcript) return { transcript: '', text: conversation ? '' : 'Не вдалося розпізнати голос. Спробуйте ще раз.', proposals: [], skipped: conversation };
+    if (req.query.handsFree === '1' && req.query.follow !== '1' && !isAddressed(transcript, st.assistantName)) return { transcript, text: '', proposals: [], skipped: true };
+    const r = await (conversation ? voiceAgent : agent).handle(ownerId, transcript);
+    const speak = conversation ? st.voiceReplies !== 'never' : st.voiceReplies !== 'never' && r.text.length <= 900 && !r.proposals.length;
+    return { transcript, ...replyJson(r), audio: speak ? await speech(r.text) : undefined };
+  });
+
+  /** First voice session of the day starts with a spoken briefing. */
+  app.post('/api/voice/start', async () => {
+    const st = await s.settings.get();
+    const today = DateTime.fromJSDate(s.clock(), { zone: st.timezone }).toISODate()!;
+    const greet = (await kvGet<string>(s.db, 'voice_greeted_on')) !== today;
+    if (greet) await kvSet(s.db, 'voice_greeted_on', today);
+    return { assistantName: st.assistantName, greet, tts: Boolean(s.tts) };
+  });
+
+  /** `ask`: run the voice agent on an instruction (briefing). Otherwise just say the text (proactive nudge). */
+  app.post<{ Body: { text?: string; ask?: boolean } }>('/api/voice/speak', async (req, reply) => {
+    const text = String(req.body?.text ?? '').trim().slice(0, 2000);
+    if (!text) return reply.code(400).send({ error: 'empty' });
+    if (!req.body?.ask) return { text, proposals: [], audio: await speech(text) };
+    const r = await voiceAgent.handle(ownerId, text);
+    return { ...replyJson(r), audio: await speech(r.text) };
   });
 
   app.post<{ Body: { text?: string } }>('/api/import', async (req, reply) => {
@@ -249,6 +285,8 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
     if (req.params.kind === 'evening') return { html: await buildEveningReport(s) };
     return reply.code(404).send({ error: 'unknown report' });
   });
+
+  registerRealtime(app, s, opts.realtimeSecret);
 
   // ---------- settings & connections ----------
 

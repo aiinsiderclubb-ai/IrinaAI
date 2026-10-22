@@ -1,4 +1,5 @@
 import { Agent } from './agent/agent.js';
+import { loadDotEnv } from './lib/env.js';
 import { createServices } from './app.js';
 import { loadConfig } from './config.js';
 import { createPgDb, migrate } from './db/index.js';
@@ -7,6 +8,8 @@ import { startScheduler } from './scheduler.js';
 import { buildServer } from './server.js';
 import { createBot } from './telegram/bot.js';
 import { registerWeb } from './web/api.js';
+
+loadDotEnv();
 
 const cfg = loadConfig();
 const db = createPgDb(cfg.DATABASE_URL);

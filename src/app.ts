@@ -4,13 +4,14 @@ import { GoogleAuth } from './integrations/google-auth.js';
 import { GoogleCalendar } from './integrations/google-calendar.js';
 import { InstagramClient } from './integrations/instagram.js';
 import { OpenAi } from './integrations/openai.js';
-import { ElevenLabs } from './integrations/tts.js';
+import { ElevenLabs, OpenAiTts } from './integrations/tts.js';
 import { YouTubeClient } from './integrations/youtube.js';
 import { log } from './lib/log.js';
 import { systemClock } from './lib/time.js';
 import { NotionHttp } from './notion/client.js';
 import { NotionNotConfigured, NotionRepo } from './notion/repo.js';
 import { NotConnected, type Services } from './services.js';
+import { MemoryStore } from './store/memory.js';
 import { MessageStore } from './store/messages.js';
 import { PendingStore } from './store/pending.js';
 import { DEFAULT_SETTINGS, SettingsStore } from './store/settings.js';
@@ -44,6 +45,7 @@ export function createServices(cfg: Config, db: Db): Services {
     tokens,
     pending: new PendingStore(db),
     messages: new MessageStore(db),
+    memory: new MemoryStore(db),
     llm: new OpenAi(cfg.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }),
     async notion() {
       if (!notionApi) throw new NotConnected('Notion не підключено (NOTION_TOKEN)');
@@ -56,7 +58,11 @@ export function createServices(cfg: Config, db: Db): Services {
     calendar: googleAuth ? new GoogleCalendar(googleAuth) : undefined,
     youtube: googleAuth ? new YouTubeClient(googleAuth, clock) : undefined,
     instagram,
-    tts: cfg.ELEVENLABS_API_KEY && cfg.ELEVENLABS_VOICE_ID ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, cfg.ELEVENLABS_VOICE_ID, cfg.ELEVENLABS_MODEL) : undefined,
+    // ElevenLabs when configured (one chosen voice), otherwise OpenAI speech on the same key
+    tts:
+      cfg.ELEVENLABS_API_KEY && cfg.ELEVENLABS_VOICE_ID
+        ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, cfg.ELEVENLABS_VOICE_ID, cfg.ELEVENLABS_MODEL)
+        : new OpenAiTts(cfg.OPENAI_API_KEY, cfg.OPENAI_TTS_MODEL, cfg.OPENAI_TTS_VOICE),
     notify: async () => {
       throw new Error('notify is not wired yet');
     },

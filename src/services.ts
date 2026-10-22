@@ -10,6 +10,7 @@ import type { YouTubeClient } from './integrations/youtube.js';
 import type { Logger } from './lib/log.js';
 import type { Clock } from './lib/time.js';
 import type { NotionRepo } from './notion/repo.js';
+import type { MemoryStore } from './store/memory.js';
 import type { MessageStore } from './store/messages.js';
 import type { PendingStore } from './store/pending.js';
 import type { SettingsStore } from './store/settings.js';
@@ -27,6 +28,7 @@ export interface Services {
   tokens: TokenStore;
   pending: PendingStore;
   messages: MessageStore;
+  memory: MemoryStore;
   llm: Llm;
   notion(): Promise<NotionRepo>;
   calendar?: CalendarPort;

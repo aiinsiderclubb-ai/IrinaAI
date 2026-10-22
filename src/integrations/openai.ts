@@ -26,7 +26,8 @@ export interface ChatResult {
 /** Everything the system needs from a language model: swapped for a fake in tests. */
 export interface Llm {
   chat(args: { messages: LlmMessage[]; tools?: ToolSpec[]; json?: boolean; temperature?: number }): Promise<ChatResult>;
-  transcribe(audio: Uint8Array, filename: string, mime: string, language?: string): Promise<string>;
+  /** `prompt` biases recognition (names, short answers like «так») */
+  transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string): Promise<string>;
   webSearch(prompt: string): Promise<string>;
 }
 
@@ -76,11 +77,12 @@ export class OpenAi implements Llm {
     };
   }
 
-  async transcribe(audio: Uint8Array, filename: string, mime: string, language?: string): Promise<string> {
+  async transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string): Promise<string> {
     const form = new FormData();
     form.append('file', new Blob([audio as unknown as ArrayBuffer], { type: mime }), filename);
     form.append('model', this.models.transcribe);
     if (language) form.append('language', language);
+    if (prompt) form.append('prompt', prompt);
     const res = await httpJson<{ text: string }>(`${BASE}/audio/transcriptions`, {
       method: 'POST',
       headers: this.headers,
@@ -105,4 +107,20 @@ export class OpenAi implements Llm {
     }
     return texts.join('\n').trim();
   }
+}
+
+export interface RealtimeSecret {
+  value: string;
+  expiresAt: number;
+}
+
+/** Short-lived key the browser uses to open a WebRTC voice session directly with OpenAI (the real key never leaves the server). */
+export async function createRealtimeSecret(apiKey: string, session: Record<string, unknown>): Promise<RealtimeSecret> {
+  const res = await httpJson<{ value: string; expires_at: number }>(`${BASE}/realtime/client_secrets`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}` },
+    json: { expires_after: { anchor: 'created_at', seconds: 600 }, session },
+    retries: 1,
+  });
+  return { value: res.value, expiresAt: res.expires_at };
 }

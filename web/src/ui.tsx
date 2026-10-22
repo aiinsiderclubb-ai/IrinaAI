@@ -9,8 +9,13 @@ export const useToast = () => useContext(ToastCtx);
 export function ToastHost({ children }: { children: ReactNode }) {
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
+    const on = (e: Event) => setMsg((e as CustomEvent<string>).detail);
+    window.addEventListener('aia:toast', on);
+    return () => window.removeEventListener('aia:toast', on);
+  }, []);
+  useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 3500);
+    const t = setTimeout(() => setMsg(null), msg.startsWith('🔔') ? 9000 : 3500);
     return () => clearTimeout(t);
   }, [msg]);
   return (

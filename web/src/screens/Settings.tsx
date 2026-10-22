@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
-import type { IntegrationState, Settings, Status } from '../types';
+import type { IntegrationState, Memory, Settings, Status } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 
 const STATE_LABEL: Record<IntegrationState, string> = { on: 'підключено', off: 'не підключено', broken: 'потрібно перепідключити', setup: 'потрібне налаштування' };
@@ -10,13 +10,14 @@ const INTEGRATIONS: Array<{ key: keyof Status['integrations']; name: string; hin
   { key: 'personal', name: 'Google Calendar — особистий', hint: 'Синхронізується з робочим' },
   { key: 'youtube', name: 'YouTube', hint: 'Лише читання статистики' },
   { key: 'instagram', name: 'Instagram', hint: 'Business / Creator, лише читання' },
-  { key: 'voice', name: 'Голос (ElevenLabs)', hint: 'Голосові відповіді' },
+  { key: 'voice', name: 'Голос', hint: 'Голосові відповіді (ElevenLabs або OpenAI)' },
 ];
 const WEEKDAYS = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
 
 export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
   const status = useLoad<Status>('/api/status');
   const settings = useLoad<Settings>('/api/settings');
+  const memories = useLoad<{ items: Memory[] }>('/api/memories');
   const [form, setForm] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +33,9 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     setError(null);
     try {
-      const { morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
+      const { assistantName, ownerName, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
       const eventsTopics = form.eventsTopics.map((t) => t.trim()).filter(Boolean);
-      const next = await api.patch<Settings>('/api/settings', { morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
+      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
       settings.setData(next);
       toast('Збережено');
     } catch (err) {
@@ -100,6 +101,22 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
         <Loading />
       ) : (
         <form className="stack" onSubmit={save}>
+          <section className="card">
+            <div className="card-head">
+              <h2>Характер асистента</h2>
+            </div>
+            <div className="form-grid">
+              <label className="field">
+                Ім’я асистента (ним і кличуть у режимі «на зв’язку»)
+                <input className="input" value={form.assistantName} maxLength={40} onChange={(e) => set('assistantName', e.target.value)} required />
+              </label>
+              <label className="field">
+                Як він звертається до тебе
+                <input className="input" value={form.ownerName} maxLength={40} placeholder="напр. Ірино" onChange={(e) => set('ownerName', e.target.value)} />
+              </label>
+            </div>
+          </section>
+
           <section className="card">
             <div className="card-head">
               <h2>Звіти та робочий день</h2>
@@ -185,6 +202,38 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
                 <input className="input" type="time" value={form.eventsTime} onChange={(e) => set('eventsTime', e.target.value)} required />
               </label>
             </div>
+          </section>
+
+          <section className="card">
+            <div className="card-head">
+              <h2>Пам’ять</h2>
+              <span className="count">{memories.data?.items.length ?? 0}</span>
+            </div>
+            {memories.data?.items.length ? (
+              <ul className="list">
+                {memories.data.items.map((m) => (
+                  <li key={m.id}>
+                    <div className="grow">
+                      <div className="title">{m.subject}</div>
+                      <div className="meta">{m.content}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={async () => {
+                        if (!window.confirm(`Забути «${m.subject}»?`)) return;
+                        await api.del(`/api/memories/${m.id}`);
+                        void memories.reload();
+                      }}
+                    >
+                      Забути
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="empty">Поки нічого. Скажи асистенту, наприклад: «запам’ятай, що Олена — наш юрист».</div>
+            )}
           </section>
 
           <section className="card card-pad">

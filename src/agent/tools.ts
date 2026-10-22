@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import type { ActionKind, ActionPayloads } from '../actions.js';
+import { runPending, type ActionKind, type ActionPayloads } from '../actions.js';
 import { findConflicts } from '../calendar/logic.js';
 import type { Account } from '../integrations/google-calendar.js';
 import type { ToolSpec } from '../integrations/openai.js';
@@ -18,6 +18,8 @@ export interface ToolContext {
   chatId: number;
   /** pending actions created during this turn: the bot renders them as confirm cards */
   proposals: PendingAction[];
+  /** voice mode: the owner's last utterance, checked before a spoken "yes" confirms an action */
+  lastUserText?: string;
 }
 
 export interface Tool<T extends z.ZodType = z.ZodType> {
@@ -37,7 +39,8 @@ async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload:
   ctx.proposals.push(p);
   return {
     status: 'awaiting_confirmation',
-    note: 'Дію підготовлено, власник підтвердить кнопкою. НЕ повідомляй, що вона виконана.',
+    action_id: p.id,
+    note: 'Дію підготовлено, власник має підтвердити. НЕ повідомляй, що вона виконана.',
     summary,
   };
 }
@@ -428,7 +431,79 @@ export function buildTools(): Tool[] {
     },
   });
 
+  add({
+    name: 'memory_save',
+    description:
+      'Запам’ятати надовго факт про людей, проєкти чи вподобання власника (хто є хто, як звертатися, що любить/не любить, звички). Виконується одразу. Не зберігай паролі, номери карток і документів.',
+    schema: z.object({
+      subject: z.string().min(1).describe('про кого/що: «Олена», «кава», «звіти»'),
+      content: z.string().min(2).describe('сам факт одним реченням'),
+      kind: z.enum(['person', 'preference', 'fact']).optional(),
+    }),
+    proposes: false,
+    async run(a, { s }) {
+      if (/\b\d{12,19}\b|парол|password|cvv|паспорт/i.test(`${a.subject} ${a.content}`)) return { status: 'refused', note: 'Чутливі дані не зберігаю.' };
+      const r = await s.memory.remember(a.subject, a.content, a.kind ?? 'fact');
+      return { status: r.updated ? 'updated' : 'saved', id: r.memory.id };
+    },
+  });
+
+  add({
+    name: 'memory_search',
+    description: 'Знайти в довгій пам’яті, що відомо про людину чи тему.',
+    schema: z.object({ query: z.string().min(1) }),
+    proposes: false,
+    async run(a, { s }) {
+      return (await s.memory.search(a.query)).map((m) => ({ id: m.id, subject: m.subject, content: m.content }));
+    },
+  });
+
+  add({
+    name: 'memory_forget',
+    description: 'Забути запис пам’яті на прохання власника (id з memory_search).',
+    schema: z.object({ id: z.number().int() }),
+    proposes: false,
+    async run(a, { s }) {
+      return { status: (await s.memory.forget(a.id)) ? 'forgotten' : 'not_found' };
+    },
+  });
+
   return tools;
+}
+
+const YES = /(^|[^\p{L}])(так|да|ага|ок|окей|добре|гаразд|підтверджую|підтверджуй|підтверди|давай|роби|вперед|звісно|авжеж|tak|da|ok|okay|yes|sure)([^\p{L}]|$)/iu;
+const NO = /(^|[^\p{L}])(ні|нет|не треба|не потрібно|скасуй|відміни|стоп|ni|niet|no)([^\p{L}]|$)/iu;
+
+/** Did the owner actually say "yes" (and not "no")? A model call alone never confirms anything. */
+export function isSpokenYes(text: string | undefined): boolean {
+  return Boolean(text && YES.test(text) && !NO.test(text));
+}
+
+/** Voice mode has no buttons: the owner confirms out loud and the model calls these. */
+export function buildVoiceTools(): Tool[] {
+  const tools = buildTools();
+  const confirm: Tool<z.ZodObject<{ action_id: z.ZodString }>> = {
+    name: 'pending_confirm',
+    description: 'Виконати підготовлену дію ПІСЛЯ того, як власник щойно вголос сказав «так»/«підтверджую». action_id з результату інструмента.',
+    schema: z.object({ action_id: z.string() }),
+    proposes: false,
+    async run(a, ctx) {
+      if (!isSpokenYes(ctx.lastUserText)) return { status: 'not_confirmed', note: 'Власник не сказав «так». Запитай підтвердження ще раз.' };
+      const r = await runPending(ctx.s, a.action_id);
+      if (r.claimed) await ctx.s.messages.add(ctx.chatId, 'assistant', `${r.ok ? 'Підтверджено голосом і виконано' : 'Помилка виконання'}: ${r.text}`);
+      return { status: r.ok ? 'done' : 'failed', result: r.text };
+    },
+  };
+  const cancel: Tool<z.ZodObject<{ action_id: z.ZodString }>> = {
+    name: 'pending_cancel',
+    description: 'Скасувати підготовлену дію, якщо власник відмовився.',
+    schema: z.object({ action_id: z.string() }),
+    proposes: false,
+    async run(a, ctx) {
+      return { status: (await ctx.s.pending.cancel(a.action_id)) ? 'cancelled' : 'already_handled' };
+    },
+  };
+  return [...tools, confirm as unknown as Tool, cancel as unknown as Tool];
 }
 
 export function toolSpecs(tools: Tool[]): ToolSpec[] {

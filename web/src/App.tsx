@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
-import { IconChat, IconLogo, IconMoney, IconSettings, IconSocial, IconTasks, IconToday } from './icons';
+import { IconChat, IconLogo, IconMic, IconMoney, IconSettings, IconSocial, IconTasks, IconToday } from './icons';
 import { Chat } from './screens/Chat';
 import { Finance } from './screens/Finance';
 import { Login } from './screens/Login';
@@ -9,11 +9,14 @@ import { SettingsScreen } from './screens/Settings';
 import { Social } from './screens/Social';
 import { Tasks } from './screens/Tasks';
 import { TodayScreen } from './screens/Today';
+import { Voice } from './screens/Voice';
+import { useNudges } from './nudges';
 import { Loading, ToastHost } from './ui';
 
 const ROUTES = [
   { path: 'today', label: 'Сьогодні', short: 'Сьогодні', icon: IconToday },
-  { path: 'chat', label: 'Асистент', short: 'Чат', icon: IconChat },
+  { path: 'voice', label: 'Голос', short: 'Голос', icon: IconMic },
+  { path: 'chat', label: 'Чат', short: 'Чат', icon: IconChat },
   { path: 'tasks', label: 'Задачі', short: 'Задачі', icon: IconTasks },
   { path: 'finance', label: 'Фінанси', short: 'Фінанси', icon: IconMoney },
   { path: 'social', label: 'Соцмережі', short: 'Метрики', icon: IconSocial },
@@ -47,6 +50,8 @@ export function App() {
     const t = setInterval(refreshPending, 30_000);
     return () => clearInterval(t);
   }, [auth?.ok, refreshPending, route]);
+
+  useNudges(Boolean(auth?.ok));
 
   if (!auth) return <Loading />;
   if (!auth.ok || route === 'login')
@@ -86,6 +91,7 @@ export function App() {
         </nav>
         <main className="main">
           {current === 'today' && <TodayScreen onChanged={refreshPending} />}
+          {current === 'voice' && <Voice onChanged={refreshPending} />}
           {current === 'chat' && <Chat onChanged={refreshPending} />}
           {current === 'tasks' && <Tasks />}
           {current === 'finance' && <Finance />}

@@ -7,6 +7,7 @@
  *   npm run demo  +  npm run dev:web   -> http://localhost:5173 with hot reload
  */
 import { randomBytes } from 'node:crypto';
+import { loadDotEnv } from '../lib/env.js';
 import { DateTime } from 'luxon';
 import { Agent } from '../agent/agent.js';
 import type { Config } from '../config.js';
@@ -15,17 +16,21 @@ import { DemoLlm } from '../dev/demoLlm.js';
 import { FakeCalendar } from '../dev/fakeCalendar.js';
 import { FakeNotion, TEST_SCHEMA } from '../dev/fakeNotion.js';
 import { OpenAi } from '../integrations/openai.js';
+import { OpenAiTts } from '../integrations/tts.js';
 import { log } from '../lib/log.js';
 import { saveSnapshot } from '../modules/social.js';
 import { NotionRepo } from '../notion/repo.js';
 import { buildServer } from '../server.js';
 import type { Services } from '../services.js';
+import { MemoryStore } from '../store/memory.js';
 import { MessageStore } from '../store/messages.js';
 import { PendingStore } from '../store/pending.js';
 import { DEFAULT_SETTINGS, SettingsStore } from '../store/settings.js';
 import { TokenStore } from '../store/tokens.js';
 import { registerWeb } from '../web/api.js';
 import { createLoginToken } from '../web/auth.js';
+
+loadDotEnv();
 
 const ZONE = 'Europe/Kyiv';
 const PORT = Number(process.env.PORT ?? 3000);
@@ -34,7 +39,7 @@ const PROJECTS = ['Запуск продукту', 'Інвестори', 'Ком
 const cfg = {
   NODE_ENV: 'development', PORT, DATABASE_URL: 'pglite', ENCRYPTION_KEY: randomBytes(32).toString('base64'), APP_SECRET: randomBytes(32).toString('hex'),
   DEFAULT_TIMEZONE: ZONE, TELEGRAM_BOT_TOKEN: 'demo', TELEGRAM_MODE: 'polling', OWNER_TELEGRAM_ID: 1, OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'demo',
-  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
+  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
   NOTION_TOKEN: 'demo', NOTION_VERSION: '2022-06-28', WEB_PASSWORD: process.env.WEB_PASSWORD ?? 'demo-password',
 } as Config;
 
@@ -97,10 +102,11 @@ await saveSnapshot(db, { platform: 'youtube', account: 'Demo Founder', takenAt: 
 // ---------- services & server ----------
 const s: Services = {
   cfg, db, clock: () => new Date(), log, settings, tokens,
-  pending: new PendingStore(db), messages: new MessageStore(db),
+  pending: new PendingStore(db), messages: new MessageStore(db), memory: new MemoryStore(db),
   llm: process.env.OPENAI_API_KEY ? new OpenAi(process.env.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }) : new DemoLlm(ZONE),
   notion: async () => repo,
   calendar,
+  tts: process.env.OPENAI_API_KEY ? new OpenAiTts(process.env.OPENAI_API_KEY) : undefined,
   notify: async (html) => console.log(`\n[notify → Telegram]\n${html.replace(/<[^>]+>/g, '')}\n`),
 };
 const agent = new Agent(s);

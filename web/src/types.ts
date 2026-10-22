@@ -89,6 +89,8 @@ export interface SocialData {
 
 export interface Settings {
   timezone: string;
+  assistantName: string;
+  ownerName: string;
   morningTime: string;
   eveningTime: string;
   voiceReplies: 'mirror' | 'always' | 'never';
@@ -108,4 +110,12 @@ export interface Settings {
 export type IntegrationState = 'on' | 'off' | 'broken' | 'setup';
 export interface Status {
   integrations: Record<'notion' | 'work' | 'personal' | 'youtube' | 'instagram' | 'voice', { state: IntegrationState; connectUrl?: string; expiresAt?: string }>;
+}
+
+export interface Memory {
+  id: number;
+  subject: string;
+  content: string;
+  kind: 'person' | 'preference' | 'fact';
+  updatedAt: string;
 }

@@ -65,6 +65,29 @@ cookie for 30 days. Optional `WEB_PASSWORD` adds a password form (5 attempts / 1
 
 Code: `src/web/*` (API + auth), `web/` (React + Vite SPA, built into `dist/web` and served by Fastify).
 
+### Voice ("Jarvis" mode)
+
+Screen **Голос**: a spoken conversation with the assistant (own name, informal «ти», personality in the prompt).
+
+* **Instant mode** — OpenAI Realtime (`gpt-realtime`) over WebRTC: sub-second replies, interrupt any time. The browser gets a
+  10-minute ephemeral key from `/api/realtime/session`; tools run on our server via `/api/realtime/tool`.
+  Needs Realtime model access in the client's OpenAI project (Settings → Limits → model access).
+* **Standard mode** — automatic fallback when Realtime is not available: voice-activity detection in the browser →
+  `/api/voice?conversation=1` (transcribe → agent → speech). 4–9 s per turn, barge-in supported.
+* **На зв’язку (hands-free)** — the mic stays open, the assistant answers only when called by name (vocative too:
+  «Аріно, …») or within 9 s after it spoke. Sessions close after 20 min of silence.
+* **Spoken confirmations** — data still changes only after a «так»: the model calls `pending_confirm`, the server checks the
+  owner's last utterance really is a yes (`isSpokenYes`). Pending action ids are in the voice prompt across turns.
+* **Proactive** — job `nudges` (every minute): meeting in ≤15 min, an expected reply overdue (after 10:00, once a day),
+  unfinished deadlines today (after 16:00). Sent to Telegram, shown in the web, and spoken if a voice session is open.
+* **Memory** — `memory_save/search/forget` tools, table `memories`; everything remembered goes into the prompt; visible and
+  deletable in Налаштування → Пам’ять. Card numbers / passwords are refused.
+* Speech output: ElevenLabs if configured, otherwise OpenAI `gpt-4o-mini-tts` on the same key (also used by Telegram).
+
+Checked live on the client's key: transcription, hands-free gating, task by voice → «Підтверджуєш?» → «Так» → task created,
+memory. Realtime is wired and its session config is accepted by OpenAI, but this key's project has no Realtime model access,
+so the WebRTC call itself was not exercised. The browser pane used for testing has no microphone: open the cabinet in Chrome.
+
 ### Try it without any keys
 
 ```bash

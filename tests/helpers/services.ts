@@ -5,6 +5,7 @@ import type { ChatResult, Llm, LlmMessage, ToolSpec } from '../../src/integratio
 import { silentLog } from '../../src/lib/log.js';
 import { NotionRepo } from '../../src/notion/repo.js';
 import type { Services } from '../../src/services.js';
+import { MemoryStore } from '../../src/store/memory.js';
 import { MessageStore } from '../../src/store/messages.js';
 import { PendingStore } from '../../src/store/pending.js';
 import { DEFAULT_SETTINGS, SettingsStore, type Settings } from '../../src/store/settings.js';
@@ -52,6 +53,10 @@ export const testConfig = (): Config =>
     OPENAI_MODEL: 'm',
     OPENAI_TRANSCRIBE_MODEL: 'm',
     OPENAI_SEARCH_MODEL: 'm',
+    OPENAI_REALTIME_MODEL: 'gpt-realtime',
+    OPENAI_REALTIME_VOICE: 'marin',
+    OPENAI_TTS_MODEL: 'gpt-4o-mini-tts',
+    OPENAI_TTS_VOICE: 'marin',
     ELEVENLABS_MODEL: 'm',
     NOTION_VERSION: '2022-06-28',
   }) as Config;
@@ -98,6 +103,7 @@ export async function makeEnv(opts: { now?: string; settings?: Partial<Settings>
     tokens,
     pending: new PendingStore(db),
     messages: new MessageStore(db),
+    memory: new MemoryStore(db),
     llm,
     notion: async () => repo,
     calendar,
