@@ -4,6 +4,32 @@ import { http } from '../lib/http.js';
 export interface Tts {
   /** mp3 bytes */
   speak(text: string): Promise<Uint8Array>;
+  /** low-latency: raw PCM 24 kHz, 16-bit little-endian mono, delivered while it is being synthesised */
+  streamPcm?(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void>;
+}
+
+/** Reads a streamed body and hands out even-length (whole 16-bit samples) chunks of at least ~100 ms. */
+async function pumpPcm(res: Response, onChunk: (pcm: Uint8Array) => void): Promise<void> {
+  if (!res.body) throw new Error('empty audio stream');
+  const reader = res.body.getReader();
+  const MIN = 4800; // 100 ms at 24 kHz * 2 bytes
+  let pending = new Uint8Array(0);
+  const take = (all: boolean) => {
+    const n = all ? pending.length - (pending.length % 2) : pending.length - (pending.length % 2);
+    if (n <= 0 || (!all && n < MIN)) return;
+    onChunk(pending.slice(0, n));
+    pending = pending.slice(n);
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const merged = new Uint8Array(pending.length + value.length);
+    merged.set(pending);
+    merged.set(value, pending.length);
+    pending = merged;
+    take(false);
+  }
+  take(true);
 }
 
 export class ElevenLabs implements Tts {
@@ -22,6 +48,17 @@ export class ElevenLabs implements Tts {
       timeoutMs: 90_000,
     });
     return new Uint8Array(await res.arrayBuffer());
+  }
+
+  async streamPcm(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void> {
+    const res = await http(`https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}/stream`, {
+      method: 'POST',
+      headers: { 'xi-api-key': this.apiKey },
+      query: { output_format: 'pcm_24000', optimize_streaming_latency: 3 },
+      json: { text, model_id: this.model },
+      timeoutMs: 90_000,
+    });
+    await pumpPcm(res, onChunk);
   }
 }
 
@@ -56,8 +93,8 @@ export class OpenAiTts implements Tts {
     private voice = 'marin',
   ) {}
 
-  async speak(text: string): Promise<Uint8Array> {
-    const res = await http('https://api.openai.com/v1/audio/speech', {
+  private request(text: string, format: 'mp3' | 'pcm') {
+    return http('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: { authorization: `Bearer ${this.apiKey}` },
       json: {
@@ -65,10 +102,17 @@ export class OpenAiTts implements Tts {
         voice: this.voice,
         input: text.slice(0, 3800),
         instructions: 'Говори українською природно, тепло і впевнено, в помірному темпі, як особистий асистент.',
-        response_format: 'mp3',
+        response_format: format,
       },
       timeoutMs: 60_000,
     });
-    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  async speak(text: string): Promise<Uint8Array> {
+    return new Uint8Array(await (await this.request(text, 'mp3')).arrayBuffer());
+  }
+
+  async streamPcm(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void> {
+    await pumpPcm(await this.request(text, 'pcm'), onChunk);
   }
 }

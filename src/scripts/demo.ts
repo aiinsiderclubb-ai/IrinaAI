@@ -39,7 +39,7 @@ const PROJECTS = ['Запуск продукту', 'Інвестори', 'Ком
 const cfg = {
   NODE_ENV: 'development', PORT, DATABASE_URL: 'pglite', ENCRYPTION_KEY: randomBytes(32).toString('base64'), APP_SECRET: randomBytes(32).toString('hex'),
   DEFAULT_TIMEZONE: ZONE, TELEGRAM_BOT_TOKEN: 'demo', TELEGRAM_MODE: 'polling', OWNER_TELEGRAM_ID: 1, OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'demo',
-  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
+  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_VOICE_MODEL: process.env.OPENAI_VOICE_MODEL ?? 'gpt-4.1-mini', OPENAI_VOICE_TRANSCRIBE_MODEL: process.env.OPENAI_VOICE_TRANSCRIBE_MODEL ?? 'gpt-4o-transcribe', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
   NOTION_TOKEN: 'demo', NOTION_VERSION: '2022-06-28', WEB_PASSWORD: process.env.WEB_PASSWORD ?? 'demo-password',
 } as Config;
 

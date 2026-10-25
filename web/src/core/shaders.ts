@@ -103,8 +103,8 @@ void main(){
   float veins = pow(f1, 9.0) * 0.9 + pow(f2, 14.0) * 0.6;
   vec3 body = mix(uDeep, uGlow, smoothstep(-0.06, 0.12, vDisp) * 0.4);
   vec3 col = body * (0.06 + uEnergy * 0.14)
-    + uGlow * rim * (0.85 + uLevel * 0.8)
-    + uGlow * veins * (0.3 + uEnergy * 0.4 + uLevel * 0.55) * (0.35 + 0.65 * facing);
+    + uGlow * rim * (0.8 + uLevel * 0.55)
+    + uGlow * veins * (0.28 + uEnergy * 0.34 + uLevel * 0.4) * (0.35 + 0.65 * facing);
   float alpha = clamp(0.12 + rim * 0.85 + veins * 0.45, 0.0, 1.0);
   gl_FragColor = vec4(col, alpha);
 }
@@ -213,6 +213,6 @@ void main(){
   float core = exp(-r * r * (16.0 - uLevel * 6.0));
   float halo = exp(-r * 3.6) * 0.22;
   vec3 col = mix(uGlow, vec3(1.0), clamp(hot * 1.2, 0.0, 1.0));
-  gl_FragColor = vec4(col, (hot * 0.85 + core * (0.3 + uEnergy * 0.3) + halo * uEnergy) * (0.8 + uLevel * 0.35));
+  gl_FragColor = vec4(col, (hot * 0.8 + core * (0.26 + uEnergy * 0.26) + halo * uEnergy) * (0.78 + uLevel * 0.25));
 }
 `;

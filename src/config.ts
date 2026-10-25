@@ -24,6 +24,9 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4.1'),
   OPENAI_TRANSCRIBE_MODEL: z.string().default('gpt-4o-transcribe'),
   OPENAI_SEARCH_MODEL: z.string().default('gpt-4.1'),
+  /** spoken conversation: a faster model and transcription, latency matters more than nuance */
+  OPENAI_VOICE_MODEL: z.string().default('gpt-4.1-mini'),
+  OPENAI_VOICE_TRANSCRIBE_MODEL: z.string().default('gpt-4o-transcribe'),
   /** live voice dialog in the web cabinet (speech-to-speech) */
   OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime'),
   OPENAI_REALTIME_VOICE: z.string().default('marin'),

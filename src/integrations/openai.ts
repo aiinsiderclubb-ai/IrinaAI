@@ -1,4 +1,4 @@
-import { httpJson } from '../lib/http.js';
+import { http, httpJson } from '../lib/http.js';
 
 export interface ToolSpec {
   name: string;
@@ -24,10 +24,22 @@ export interface ChatResult {
 }
 
 /** Everything the system needs from a language model: swapped for a fake in tests. */
+export interface ChatArgs {
+  messages: LlmMessage[];
+  tools?: ToolSpec[];
+  json?: boolean;
+  temperature?: number;
+  /** override the default chat model (voice uses a faster one) */
+  model?: string;
+  maxTokens?: number;
+  /** stream the answer: called with each text fragment as it is generated */
+  onText?: (delta: string) => void;
+}
+
 export interface Llm {
-  chat(args: { messages: LlmMessage[]; tools?: ToolSpec[]; json?: boolean; temperature?: number }): Promise<ChatResult>;
+  chat(args: ChatArgs): Promise<ChatResult>;
   /** `prompt` biases recognition (names, short answers like «так») */
-  transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string): Promise<string>;
+  transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string, model?: string): Promise<string>;
   webSearch(prompt: string): Promise<string>;
 }
 
@@ -43,7 +55,7 @@ export class OpenAi implements Llm {
     return { authorization: `Bearer ${this.apiKey}` };
   }
 
-  async chat(args: { messages: LlmMessage[]; tools?: ToolSpec[]; json?: boolean; temperature?: number }): Promise<ChatResult> {
+  async chat(args: ChatArgs): Promise<ChatResult> {
     const messages = args.messages.map((m) => {
       if (m.role === 'tool') return { role: 'tool', tool_call_id: m.toolCallId, content: m.content };
       if (m.role === 'assistant')
@@ -56,20 +68,18 @@ export class OpenAi implements Llm {
         };
       return m;
     });
-    const res = await httpJson<any>(`${BASE}/chat/completions`, {
-      method: 'POST',
-      headers: this.headers,
-      json: {
-        model: this.models.chat,
-        messages,
-        temperature: args.temperature ?? 0.2,
-        ...(args.tools?.length
-          ? { tools: args.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }
-          : {}),
-        ...(args.json ? { response_format: { type: 'json_object' } } : {}),
-      },
-      timeoutMs: 90_000,
-    });
+    const body = {
+      model: args.model ?? this.models.chat,
+      messages,
+      temperature: args.temperature ?? 0.2,
+      ...(args.maxTokens ? { max_tokens: args.maxTokens } : {}),
+      ...(args.tools?.length
+        ? { tools: args.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }
+        : {}),
+      ...(args.json ? { response_format: { type: 'json_object' } } : {}),
+    };
+    if (args.onText) return this.chatStream(body, args.onText);
+    const res = await httpJson<any>(`${BASE}/chat/completions`, { method: 'POST', headers: this.headers, json: body, timeoutMs: 90_000 });
     const msg = res.choices?.[0]?.message;
     return {
       content: msg?.content ?? null,
@@ -77,10 +87,47 @@ export class OpenAi implements Llm {
     };
   }
 
-  async transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string): Promise<string> {
+  /** SSE streaming: text fragments go to `onText` immediately, tool calls are assembled from their deltas. */
+  private async chatStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<ChatResult> {
+    const res = await http(`${BASE}/chat/completions`, { method: 'POST', headers: this.headers, json: { ...body, stream: true }, timeoutMs: 90_000 });
+    if (!res.body) throw new Error('OpenAI: empty stream');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let content = '';
+    const calls: Array<{ id: string; name: string; arguments: string }> = [];
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        const delta = JSON.parse(data).choices?.[0]?.delta;
+        if (!delta) continue;
+        if (typeof delta.content === 'string' && delta.content) {
+          content += delta.content;
+          onText(delta.content);
+        }
+        for (const tc of delta.tool_calls ?? []) {
+          const c = (calls[tc.index] ??= { id: '', name: '', arguments: '' });
+          if (tc.id) c.id = tc.id;
+          if (tc.function?.name) c.name += tc.function.name;
+          if (tc.function?.arguments) c.arguments += tc.function.arguments;
+        }
+      }
+    }
+    return { content: content || null, toolCalls: calls.filter(Boolean) };
+  }
+
+  async transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string, model?: string): Promise<string> {
     const form = new FormData();
     form.append('file', new Blob([audio as unknown as ArrayBuffer], { type: mime }), filename);
-    form.append('model', this.models.transcribe);
+    form.append('model', model ?? this.models.transcribe);
     if (language) form.append('language', language);
     if (prompt) form.append('prompt', prompt);
     const res = await httpJson<{ text: string }>(`${BASE}/audio/transcriptions`, {

@@ -24,6 +24,7 @@ import type { SocialData } from '../integrations/social-types.js';
 import type { Services } from '../services.js';
 import type { PendingAction } from '../store/pending.js';
 import { registerRealtime, type SecretFactory } from './realtime.js';
+import { OrderedSpeech, SentenceSplitter } from './speech-stream.js';
 import { AttemptLimiter, consumeLoginToken, isValidSession, issueSession, passwordMatches, SESSION_COOKIE, SESSION_DAYS } from './auth.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,7 +74,7 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   const { cfg } = s;
   const ownerId = cfg.OWNER_TELEGRAM_ID;
   const limiter = new AttemptLimiter();
-  const voiceAgent = new Agent(s, buildVoiceTools(), 'voice');
+  const voiceAgent = new Agent(s, buildVoiceTools(), 'voice', { name: cfg.OPENAI_VOICE_MODEL, maxTokens: 400 });
   const speech = async (text: string): Promise<string | undefined> => {
     if (!s.tts || !text) return undefined;
     try {
@@ -161,6 +162,99 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
     const speak = conversation ? st.voiceReplies !== 'never' : st.voiceReplies !== 'never' && r.text.length <= 900 && !r.proposals.length;
     return { transcript, ...replyJson(r), audio: speak ? await speech(r.text) : undefined };
   });
+
+  /**
+   * Streaming voice turn (NDJSON). Audio body = the owner spoke; JSON body = typed question (`text`), instruction (`ask`)
+   * or plain announcement (`say`). Events: transcript, skipped, text (deltas), audio (one mp3 per sentence, in order),
+   * proposals, done, error. The first sentence is spoken while the model is still writing the rest.
+   */
+  app.post<{ Querystring: { handsFree?: string; follow?: string }; Body: Buffer | { text?: string; ask?: string; say?: string; agent?: 'text' | 'voice'; speak?: boolean } }>(
+    '/api/voice/stream',
+    async (req, reply) => {
+      const st = await s.settings.get();
+      const started = Date.now();
+      reply.hijack();
+      reply.raw.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-cache, no-transform', 'x-accel-buffering': 'no' });
+      const emit = (ev: Record<string, unknown>) => reply.raw.write(`${JSON.stringify(ev)}\n`);
+      let closed = false;
+      req.raw.on('close', () => (closed = true));
+      try {
+        let userText: string | undefined;
+        let instruction: string | undefined;
+        let sayOnly: string | undefined;
+        let useVoiceAgent = true;
+        let speak = st.voiceReplies !== 'never';
+        if (Buffer.isBuffer(req.body)) {
+          const mime = String(req.headers['content-type'] ?? '').split(';')[0]!;
+          userText = await s.llm.transcribe(
+            new Uint8Array(req.body),
+            `voice.${AUDIO_EXT[mime] ?? 'webm'}`,
+            mime,
+            st.language,
+            transcriptionHint(st.assistantName),
+            cfg.OPENAI_VOICE_TRANSCRIBE_MODEL,
+          );
+          emit({ type: 'transcript', text: userText, ms: Date.now() - started });
+          if (!userText || (req.query.handsFree === '1' && req.query.follow !== '1' && !isAddressed(userText, st.assistantName))) {
+            emit({ type: 'skipped' });
+            emit({ type: 'done', text: '' });
+            return;
+          }
+        } else {
+          const b = req.body ?? {};
+          if (b.say) sayOnly = String(b.say).slice(0, 2000);
+          else if (b.ask) instruction = String(b.ask).slice(0, 2000);
+          else userText = String(b.text ?? '').trim().slice(0, 8000);
+          useVoiceAgent = b.agent !== 'text';
+          if (b.speak === false) speak = false;
+          if (!sayOnly && !instruction && !userText) throw new Error('empty');
+        }
+
+        const tts = speak ? s.tts : undefined;
+        const speech = new OrderedSpeech(
+          async (text, onAudio) => {
+            if (!tts) return;
+            const spoken = plainForSpeech(text);
+            if (!spoken) return;
+            if (tts.streamPcm) await tts.streamPcm(spoken, (pcm) => onAudio(Buffer.from(pcm).toString('base64')));
+            else onAudio(Buffer.from(await tts.speak(spoken)).toString('base64'));
+          },
+          (seq, chunk) => {
+            if (closed) return;
+            if ('end' in chunk) emit({ type: 'audio_end', seq });
+            else emit({ type: 'audio', seq, format: tts?.streamPcm ? 'pcm24' : 'mp3', data: chunk.audio, ms: Date.now() - started });
+          },
+        );
+        const splitter = new SentenceSplitter();
+        const onText = (delta: string) => {
+          if (closed) return;
+          emit({ type: 'text', delta });
+          for (const piece of splitter.push(delta)) speech.add(piece);
+        };
+
+        let proposals: PendingAction[] = [];
+        let finalText: string;
+        if (sayOnly) {
+          onText(sayOnly);
+          finalText = sayOnly;
+        } else {
+          const r = await (useVoiceAgent ? voiceAgent : agent).handle(ownerId, (instruction ?? userText)!, onText);
+          proposals = r.proposals;
+          finalText = r.text;
+        }
+        const rest = splitter.flush();
+        if (rest) speech.add(rest);
+        if (proposals.length) emit({ type: 'proposals', items: proposals.map(card) });
+        await speech.done();
+        emit({ type: 'done', text: finalText, ms: Date.now() - started });
+      } catch (e) {
+        s.log.warn('voice_stream_failed', { error: errMsg(e).slice(0, 200) });
+        emit({ type: 'error', message: errMsg(e).slice(0, 300) });
+      } finally {
+        reply.raw.end();
+      }
+    },
+  );
 
   /** First voice session of the day starts with a spoken briefing. */
   app.post('/api/voice/start', async () => {

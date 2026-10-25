@@ -6,7 +6,7 @@ import { IconMic, IconSend } from '../icons';
 import { go, useHash } from '../router';
 import type { Proposal, Settings, Today } from '../types';
 import { ProposalCard, useLoad, useToast } from '../ui';
-import { LevelMeter } from '../voice/level';
+import { StreamPlayer, streamTurn } from '../voice/stream';
 import { StandardVoice } from '../voice/pipeline';
 import { RealtimeVoice } from '../voice/realtime';
 import { RealtimeUnavailable, type VoiceEngine, type VoiceHandlers, type VoiceStatus } from '../voice/types';
@@ -39,37 +39,6 @@ function useClock() {
   return now;
 }
 
-/** Plays a spoken reply outside a voice session (typed question) and measures it for the core. */
-class ReplyPlayer {
-  private audio = new Audio();
-  private meter?: LevelMeter;
-  onState?: (playing: boolean) => void;
-  constructor() {
-    this.audio.onplay = () => this.onState?.(true);
-    this.audio.onended = () => this.onState?.(false);
-    this.audio.onpause = () => this.onState?.(false);
-  }
-  play(b64: string) {
-    if (!this.meter) {
-      this.meter = new LevelMeter();
-      this.meter.addElement(this.audio);
-    }
-    void this.meter.ctx.resume();
-    this.audio.src = `data:audio/mpeg;base64,${b64}`;
-    void this.audio.play().catch(() => this.onState?.(false));
-  }
-  stop() {
-    this.audio.pause();
-  }
-  level() {
-    return this.meter?.level() ?? 0;
-  }
-  dispose() {
-    this.audio.pause();
-    this.meter?.close();
-  }
-}
-
 export function Core({ onChanged }: { onChanged: () => void }) {
   const settings = useLoad<Settings>('/api/settings');
   const today = useLoad<Today>('/api/today');
@@ -85,7 +54,8 @@ export function Core({ onChanged }: { onChanged: () => void }) {
   const [engine, setEngine] = useState<VoiceEngine | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<CoreScene | null>(null);
-  const player = useRef<ReplyPlayer | null>(null);
+  const player = useRef<StreamPlayer | null>(null);
+  const [live, setLive] = useState('');
   const engineRef = useRef<VoiceEngine | null>(null);
   const toast = useToast();
   const now = useClock();
@@ -102,7 +72,7 @@ export function Core({ onChanged }: { onChanged: () => void }) {
   // ---------- the core ----------
   useEffect(() => {
     if (!gl || !host.current) return;
-    player.current = new ReplyPlayer();
+    player.current = new StreamPlayer();
     const s = new CoreScene(host.current, () => {
       if (engineRef.current?.active) return engineRef.current.level();
       // preview of the speaking/hearing look without audio: a synthetic voice envelope
@@ -116,7 +86,7 @@ export function Core({ onChanged }: { onChanged: () => void }) {
     scene.current = s;
     return () => {
       s.dispose();
-      player.current?.dispose();
+      player.current?.close();
       scene.current = null;
     };
   }, [gl]);
@@ -209,24 +179,38 @@ export function Core({ onChanged }: { onChanged: () => void }) {
     }
     push('user', text);
     setStatus('thinking');
+    const p = player.current;
+    if (p) {
+      p.unlock();
+      p.stop();
+      p.onStart = () => setStatus('speaking');
+      p.onIdle = () => setStatus(engineRef.current?.active ? 'listening' : 'idle');
+    }
+    // the answer streams into the subtitles and is spoken sentence by sentence while it is still being written
+    let acc = '';
     try {
-      const r = await api.post<{ text: string; proposals: Proposal[] }>('/api/chat', { text });
-      if (r.text) push('assistant', r.text);
-      if (r.proposals.length) {
-        setCards((c) => [...c, ...r.proposals]);
-        onChanged();
-      }
-      if (r.text && !muted && settings.data?.voiceReplies !== 'never') {
-        const spoken = await api.post<{ audio?: string }>('/api/voice/speak', { text: r.text }).catch(() => ({ audio: undefined }));
-        if (spoken.audio && player.current) {
-          player.current.onState = (playing) => setStatus(playing ? 'speaking' : engineRef.current?.active ? 'listening' : 'idle');
-          player.current.play(spoken.audio);
-          return;
-        }
-      }
-      setStatus('idle');
+      await streamTurn({
+        body: { text, agent: 'text', speak: !muted && settings.data?.voiceReplies !== 'never' },
+        player: p ?? undefined,
+        handlers: {
+          onText: (d) => {
+            acc += d;
+            setLive(acc);
+          },
+          onProposals: (items) => {
+            setCards((c) => [...c, ...items]);
+            onChanged();
+          },
+          onDone: (t) => {
+            setLive('');
+            if (t || acc) push('assistant', t || acc);
+          },
+        },
+      });
+      if (!p?.playing) setStatus(engineRef.current?.active ? 'listening' : 'idle');
     } catch (err) {
-      push('system', err instanceof ApiError ? err.message : String(err));
+      setLive('');
+      push('system', err instanceof Error ? err.message : String(err));
       setStatus('idle');
     }
   };
@@ -335,7 +319,9 @@ export function Core({ onChanged }: { onChanged: () => void }) {
 
       <section className="core-subs" aria-live="polite">
         {lastUser && <p className="sub-user">{lastUser.text}</p>}
-        {lastAssistant ? (
+        {live ? (
+          <p className="sub-assistant live">{live}</p>
+        ) : lastAssistant ? (
           <p className="sub-assistant" key={lastAssistant.at}>
             {lastAssistant.text}
           </p>

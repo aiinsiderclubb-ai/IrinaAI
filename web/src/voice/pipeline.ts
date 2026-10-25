@@ -1,15 +1,7 @@
 import { api, ApiError } from '../api';
-import type { Proposal } from '../types';
 import { LevelMeter } from './level';
+import { StreamPlayer, streamTurn } from './stream';
 import type { VoiceEngine, VoiceHandlers } from './types';
-
-interface Reply {
-  transcript?: string;
-  text: string;
-  proposals: Proposal[];
-  audio?: string;
-  skipped?: boolean;
-}
 
 const FOLLOW_UP_MS = 9000;
 const IDLE_STOP_MS = { handsFree: 20 * 60_000, normal: 5 * 60_000 };
@@ -27,7 +19,9 @@ export class StandardVoice implements VoiceEngine {
   readonly kind = 'standard' as const;
   private mic?: MediaStream;
   private meter?: LevelMeter;
-  private player = new Audio();
+  private player?: StreamPlayer;
+  private turn?: AbortController;
+  private streaming = false;
   private recorder?: MediaRecorder;
   private chunks: Blob[] = [];
   private timer?: number;
@@ -45,12 +39,17 @@ export class StandardVoice implements VoiceEngine {
   constructor(
     private h: VoiceHandlers,
     private handsFree: boolean,
-  ) {
-    this.player.onplay = () => this.h.onStatus('speaking');
-    this.player.onended = () => {
+  ) {}
+
+  private makePlayer(): StreamPlayer {
+    const p = new StreamPlayer();
+    p.onStart = () => this.running && this.h.onStatus('speaking');
+    p.onIdle = () => {
       this.followUntil = Date.now() + FOLLOW_UP_MS;
-      if (this.running) this.h.onStatus('listening');
+      // more audio may still be on its way while the stream is open
+      if (this.running && !this.streaming) this.h.onStatus('listening');
     };
+    return p;
   }
 
   get active(): boolean {
@@ -58,7 +57,7 @@ export class StandardVoice implements VoiceEngine {
   }
 
   level(): number {
-    return this.meter?.level() ?? 0;
+    return Math.max(this.meter?.level() ?? 0, this.player?.level() ?? 0);
   }
 
   async start(): Promise<void> {
@@ -67,19 +66,21 @@ export class StandardVoice implements VoiceEngine {
     this.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     this.meter = new LevelMeter();
     this.meter.addStream(this.mic); // analyser 0 = mic
-    this.meter.addElement(this.player); // analyser 1 = assistant voice
+    this.player = this.makePlayer();
+    this.player.unlock();
     this.running = true;
     this.calibrateUntil = Date.now() + 600;
     this.timer = window.setInterval(() => this.frame(), FRAME_MS);
     this.h.onStatus('listening');
-    if (info.greet) void this.say({ text: 'Привітайся коротко і дай брифінг дня: подивись календар і задачі на сьогодні та скажи головне у 2–3 реченнях.', ask: true });
+    if (info.greet) void this.run({ ask: 'Привітайся коротко і дай брифінг дня: скажи головне про сьогодні у 2–3 реченнях.' });
   }
 
   stop(): void {
     this.running = false;
     window.clearInterval(this.timer);
     if (this.recorder?.state === 'recording') this.recorder.stop();
-    this.player.pause();
+    this.turn?.abort();
+    this.player?.close();
     this.mic?.getTracks().forEach((t) => t.stop());
     this.meter?.close();
     this.h.onStatus('idle');
@@ -92,19 +93,39 @@ export class StandardVoice implements VoiceEngine {
 
   announce(text: string): void {
     if (!this.running) return;
-    void this.say({ text });
+    void this.run({ say: text });
   }
 
-  private async say(body: { text: string; ask?: boolean }): Promise<void> {
+  /** One streamed turn: text and voice arrive sentence by sentence. */
+  private async run(body: Blob | Record<string, unknown>, query?: string): Promise<void> {
     this.busy = true;
+    this.streaming = true;
     this.h.onStatus('thinking');
+    this.turn = new AbortController();
+    let text = '';
+    let skipped = false;
     try {
-      this.handle(await api.post<Reply>('/api/voice/speak', body), false);
+      await streamTurn({
+        body,
+        query,
+        player: this.player,
+        signal: this.turn.signal,
+        handlers: {
+          onTranscript: (t) => t && this.h.onLine('user', t),
+          onSkipped: () => (skipped = true),
+          onText: (d) => (text += d),
+          onProposals: (items) => this.h.onProposals(items),
+          onDone: (t) => {
+            if (t || text) this.h.onLine('assistant', t || text);
+          },
+        },
+      });
     } catch (e) {
-      this.h.onError(e instanceof ApiError ? e.message : String(e));
-      this.h.onStatus('listening');
+      if (!(e instanceof DOMException && e.name === 'AbortError')) this.h.onError(e instanceof ApiError ? e.message : String(e));
     } finally {
       this.busy = false;
+      this.streaming = false;
+      if (this.running && (skipped || !this.player?.playing)) this.h.onStatus('listening');
     }
   }
 
@@ -116,7 +137,7 @@ export class StandardVoice implements VoiceEngine {
       this.noiseFloor = Math.max(this.noiseFloor * 0.8 + rms * 0.2, 0.004);
       return;
     }
-    const speaking = !this.player.paused;
+    const speaking = Boolean(this.player?.playing);
     // while the assistant talks, demand a louder voice so its own sound leaking into the mic is not "speech"
     const threshold = Math.max(0.018, this.noiseFloor * 3) * (speaking ? 2.5 : 1);
     const recording = this.recorder?.state === 'recording';
@@ -125,7 +146,7 @@ export class StandardVoice implements VoiceEngine {
       this.aboveFrames++;
       this.silenceSince = 0;
       if (!recording && !this.busy && this.aboveFrames >= START_FRAMES) {
-        if (speaking) this.player.pause(); // barge-in
+        if (speaking) this.player?.stop(); // barge-in
         this.beginUtterance();
       }
     } else {
@@ -169,31 +190,7 @@ export class StandardVoice implements VoiceEngine {
       this.h.onStatus('listening');
       return;
     }
-    this.busy = true;
-    this.h.onStatus('thinking');
     const follow = Date.now() < this.followUntil ? '1' : '0';
-    try {
-      const r = await api.upload<Reply>(`/api/voice?conversation=1&handsFree=${this.handsFree ? 1 : 0}&follow=${follow}`, blob);
-      this.handle(r, true);
-    } catch (e) {
-      this.h.onError(e instanceof ApiError ? e.message : String(e));
-      this.h.onStatus('listening');
-    } finally {
-      this.busy = false;
-    }
-  }
-
-  private handle(r: Reply, fromUser: boolean): void {
-    if (fromUser && r.transcript) this.h.onLine('user', r.transcript);
-    if (r.skipped) {
-      this.h.onStatus('listening');
-      return;
-    }
-    if (r.text) this.h.onLine('assistant', r.text);
-    if (r.proposals.length) this.h.onProposals(r.proposals);
-    if (r.audio && this.running) {
-      this.player.src = `data:audio/mpeg;base64,${r.audio}`;
-      void this.player.play().catch(() => this.h.onStatus('listening'));
-    } else this.h.onStatus('listening');
+    await this.run(blob, `handsFree=${this.handsFree ? 1 : 0}&follow=${follow}`);
   }
 }

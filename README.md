@@ -73,7 +73,11 @@ Screen **Голос**: a spoken conversation with the assistant (own name, infor
   10-minute ephemeral key from `/api/realtime/session`; tools run on our server via `/api/realtime/tool`.
   Needs Realtime model access in the client's OpenAI project (Settings → Limits → model access).
 * **Standard mode** — automatic fallback when Realtime is not available: voice-activity detection in the browser →
-  `/api/voice?conversation=1` (transcribe → agent → speech). 4–9 s per turn, barge-in supported.
+  `/api/voice/stream` (NDJSON). Speech is transcribed, the answer comes from a faster model (`OPENAI_VOICE_MODEL`,
+  default `gpt-4.1-mini`) as a stream, each finished sentence is synthesised right away as streamed PCM
+  (`gpt-4o-mini-tts` or ElevenLabs `pcm_24000`) and played in the browser while the rest is still being written.
+  A compact picture of today is in the voice prompt, so "what's next?" needs one model round, not two.
+  Measured on the client's key: first sound 1.9–2.8 s after the phrase ends (was 5 s; long answers up to 56 s). Barge-in supported.
 * **На зв’язку (hands-free)** — the mic stays open, the assistant answers only when called by name (vocative too:
   «Аріно, …») or within 9 s after it spoke. Sessions close after 20 min of silence.
 * **Spoken confirmations** — data still changes only after a «так»: the model calls `pending_confirm`, the server checks the

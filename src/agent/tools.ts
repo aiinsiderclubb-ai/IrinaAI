@@ -365,11 +365,19 @@ export function buildTools(): Tool[] {
   add({
     name: 'finance_summary',
     description: 'Підсумок витрат/доходів за період. Суми вже пораховані — передай їх користувачу дослівно, не перераховуй.',
-    schema: z.object({ from: date, to: date, scope: z.enum(['personal', 'project']).optional(), project: z.string().optional() }),
+    schema: z.object({
+      from: date.optional().describe('за замовчуванням — 1-ше число поточного місяця'),
+      to: date.optional().describe('за замовчуванням — сьогодні'),
+      scope: z.enum(['personal', 'project']).optional(),
+      project: z.string().optional(),
+    }),
     proposes: false,
     async run(a, { s }) {
-      const entries = await (await s.notion()).queryFinance(a.from, a.to);
-      return { text: formatSummary(summarize(entries, { scope: a.scope, project: a.project }), `${a.from} – ${a.to}`) };
+      const now = DateTime.fromJSDate(s.clock(), { zone: (await s.settings.get()).timezone });
+      const from = a.from ?? now.startOf('month').toISODate()!;
+      const to = a.to ?? now.toISODate()!;
+      const entries = await (await s.notion()).queryFinance(from, to);
+      return { text: formatSummary(summarize(entries, { scope: a.scope, project: a.project }), `${from} – ${to}`) };
     },
   });
 

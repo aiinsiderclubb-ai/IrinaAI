@@ -339,6 +339,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .sub-user::before { content: '— '; color: var(--c-faint); }
 .sub-assistant { font-size: clamp(18px, 2.2vw, 24px); font-weight: 400; line-height: 1.45; text-shadow: 0 0 24px rgb(0 0 0 / 0.8); animation: sub-in 0.5s ease-out; }
 .sub-hint { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; color: var(--c-faint); text-transform: uppercase; }
+/* streaming text grows in place: no entry animation per fragment */
+.sub-assistant.live { animation: none; }
 @keyframes sub-in { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
 
 /* ---------- confirmation cards (glass) ---------- */

@@ -15,16 +15,18 @@ import { FakeNotion, TEST_SCHEMA } from '../../src/dev/fakeNotion.js';
 
 /** Scripted model: each element answers one `chat` call. */
 export class ScriptedLlm implements Llm {
-  calls: Array<{ messages: LlmMessage[]; tools?: ToolSpec[] }> = [];
+  calls: Array<{ messages: LlmMessage[]; tools?: ToolSpec[]; model?: string }> = [];
   transcripts: string[] = [];
   searchAnswer = '[]';
   constructor(public script: Array<ChatResult | ((messages: LlmMessage[]) => ChatResult)> = []) {}
 
-  async chat(args: { messages: LlmMessage[]; tools?: ToolSpec[] }): Promise<ChatResult> {
-    this.calls.push({ messages: args.messages, tools: args.tools });
+  async chat(args: { messages: LlmMessage[]; tools?: ToolSpec[]; model?: string; onText?: (d: string) => void }): Promise<ChatResult> {
+    this.calls.push({ messages: args.messages, tools: args.tools, model: args.model });
     const next = this.script.shift();
-    if (!next) return { content: 'ok', toolCalls: [] };
-    return typeof next === 'function' ? next(args.messages) : next;
+    const res = !next ? { content: 'ok', toolCalls: [] } : typeof next === 'function' ? next(args.messages) : next;
+    // simulate streaming: hand the text out in small fragments
+    if (args.onText && res.content) for (const piece of res.content.match(/.{1,7}/gs) ?? []) args.onText(piece);
+    return res;
   }
   async transcribe(): Promise<string> {
     return this.transcripts.shift() ?? '';
@@ -53,6 +55,8 @@ export const testConfig = (): Config =>
     OPENAI_MODEL: 'm',
     OPENAI_TRANSCRIBE_MODEL: 'm',
     OPENAI_SEARCH_MODEL: 'm',
+    OPENAI_VOICE_MODEL: 'fast',
+    OPENAI_VOICE_TRANSCRIBE_MODEL: 'm',
     OPENAI_REALTIME_MODEL: 'gpt-realtime',
     OPENAI_REALTIME_VOICE: 'marin',
     OPENAI_TTS_MODEL: 'gpt-4o-mini-tts',
