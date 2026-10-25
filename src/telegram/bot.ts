@@ -208,16 +208,24 @@ export function createBot(s: Services, agent: Agent): Bot {
 
   // ---------- messages ----------
 
-  bot.on('message:voice', async (ctx) => {
-    const v = ctx.message.voice;
-    if (v.file_size && v.file_size > MAX_FILE_BYTES) return void (await ctx.reply('Голосове задовге.'));
-    await ctx.api.sendChatAction(ctx.chat.id, 'typing').catch(() => {});
-    const audio = await s.downloadFile!(v.file_id);
+  /** voice note, audio file or round video: transcribe, then answer like a typed message (by voice in mirror mode) */
+  async function hearAndAnswer(chatId: number, file: { file_id: string; file_size?: number; mime_type?: string }, name: string): Promise<void> {
+    if (file.file_size && file.file_size > MAX_FILE_BYTES) return void (await bot.api.sendMessage(chatId, 'Запис задовгий (Telegram дає боту файли до 20 МБ).'));
+    await bot.api.sendChatAction(chatId, 'typing').catch(() => {});
+    const audio = await s.downloadFile!(file.file_id);
     const st = await s.settings.get();
-    const text = await s.llm.transcribe(audio, 'voice.ogg', v.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
-    if (!text) return void (await ctx.reply('Не вдалося розпізнати голос. Спробуйте ще раз.'));
-    await ctx.reply(`🎙 ${text}`);
-    await ask(ctx.chat.id, text, true);
+    const text = await s.llm.transcribe(audio, name, file.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
+    if (!text) return void (await bot.api.sendMessage(chatId, 'Не вдалося розпізнати. Спробуй ще раз, ближче до мікрофона.'));
+    await bot.api.sendMessage(chatId, `🎙 ${text}`);
+    await ask(chatId, text, true);
+  }
+
+  bot.on('message:voice', (ctx) => hearAndAnswer(ctx.chat.id, ctx.message.voice, 'voice.ogg'));
+  bot.on('message:video_note', (ctx) => hearAndAnswer(ctx.chat.id, { ...ctx.message.video_note, mime_type: 'video/mp4' }, 'note.mp4'));
+  bot.on('message:audio', (ctx) => {
+    const a = ctx.message.audio;
+    const ext = (a.file_name?.split('.').pop() ?? a.mime_type?.split('/')[1] ?? 'mp3').toLowerCase();
+    return hearAndAnswer(ctx.chat.id, a, `audio.${ext}`);
   });
 
   bot.on('message:document', async (ctx) => {

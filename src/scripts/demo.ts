@@ -29,6 +29,8 @@ import { DEFAULT_SETTINGS, SettingsStore } from '../store/settings.js';
 import { TokenStore } from '../store/tokens.js';
 import { registerWeb } from '../web/api.js';
 import { createLoginToken } from '../web/auth.js';
+import { createBot } from '../telegram/bot.js';
+import { startScheduler } from '../scheduler.js';
 
 loadDotEnv();
 
@@ -36,9 +38,14 @@ const ZONE = 'Europe/Kyiv';
 const PORT = Number(process.env.PORT ?? 3000);
 const PROJECTS = ['Запуск продукту', 'Інвестори', 'Команда'];
 
+// real Telegram bot in the demo once a token and the paired owner id are in .env (npm run pair)
+const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+const tgOwner = Number(process.env.OWNER_TELEGRAM_ID ?? 0);
+const telegram = Boolean(tgToken && tgOwner);
+
 const cfg = {
   NODE_ENV: 'development', PORT, DATABASE_URL: 'pglite', ENCRYPTION_KEY: randomBytes(32).toString('base64'), APP_SECRET: randomBytes(32).toString('hex'),
-  DEFAULT_TIMEZONE: ZONE, TELEGRAM_BOT_TOKEN: 'demo', TELEGRAM_MODE: 'polling', OWNER_TELEGRAM_ID: 1, OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'demo',
+  DEFAULT_TIMEZONE: ZONE, TELEGRAM_BOT_TOKEN: tgToken ?? 'demo', TELEGRAM_MODE: 'polling', OWNER_TELEGRAM_ID: telegram ? tgOwner : 1, OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'demo',
   OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_VOICE_MODEL: process.env.OPENAI_VOICE_MODEL ?? 'gpt-4.1-mini', OPENAI_VOICE_TRANSCRIBE_MODEL: process.env.OPENAI_VOICE_TRANSCRIBE_MODEL ?? 'gpt-4o-transcribe', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
   NOTION_TOKEN: 'demo', NOTION_VERSION: '2022-06-28', WEB_PASSWORD: process.env.WEB_PASSWORD ?? 'demo-password',
 } as Config;
@@ -110,7 +117,15 @@ const s: Services = {
   notify: async (html) => console.log(`\n[notify → Telegram]\n${html.replace(/<[^>]+>/g, '')}\n`),
 };
 const agent = new Agent(s);
-const app = buildServer(s, { handleUpdate: async () => {} } as never);
+let bot: ReturnType<typeof createBot> | undefined;
+if (telegram) {
+  bot = createBot(s, agent); // also replaces s.notify: reports and nudges go to Telegram
+  await bot.init();
+  await bot.api.deleteWebhook();
+  void bot.start({ allowed_updates: ['message', 'callback_query'], onStart: () => console.log(`  Telegram: @${bot!.botInfo.username} is listening (owner ${tgOwner})`) });
+  startScheduler(s);
+}
+const app = buildServer(s, (bot ?? { handleUpdate: async () => {} }) as never);
 await registerWeb(app, s, agent);
 await app.listen({ port: PORT, host: '127.0.0.1' });
 
@@ -122,4 +137,5 @@ console.log(`
   Open:      http://localhost:${PORT}/#/login?token=${token}
   Password:  ${cfg.WEB_PASSWORD}
   (with Vite dev server use port 5173 instead of ${PORT})
+  Telegram:  ${telegram ? 'on (polling)' : tgToken ? 'token set, run `npm run pair` to link your account' : 'off (no TELEGRAM_BOT_TOKEN)'}
 `);
