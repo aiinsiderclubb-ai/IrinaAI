@@ -16,7 +16,7 @@ import { DemoLlm } from '../dev/demoLlm.js';
 import { FakeCalendar } from '../dev/fakeCalendar.js';
 import { FakeNotion, TEST_SCHEMA } from '../dev/fakeNotion.js';
 import { OpenAi } from '../integrations/openai.js';
-import { OpenAiTts } from '../integrations/tts.js';
+import { ElevenLabs, OpenAiTts } from '../integrations/tts.js';
 import { log } from '../lib/log.js';
 import { saveSnapshot } from '../modules/social.js';
 import { NotionRepo } from '../notion/repo.js';
@@ -46,7 +46,7 @@ const telegram = Boolean(tgToken && tgOwner);
 const cfg = {
   NODE_ENV: 'development', PORT, DATABASE_URL: 'pglite', ENCRYPTION_KEY: randomBytes(32).toString('base64'), APP_SECRET: randomBytes(32).toString('hex'),
   DEFAULT_TIMEZONE: ZONE, TELEGRAM_BOT_TOKEN: tgToken ?? 'demo', TELEGRAM_MODE: 'polling', OWNER_TELEGRAM_ID: telegram ? tgOwner : 1, OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? 'demo',
-  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_VOICE_MODEL: process.env.OPENAI_VOICE_MODEL ?? 'gpt-4.1-mini', OPENAI_VOICE_TRANSCRIBE_MODEL: process.env.OPENAI_VOICE_TRANSCRIBE_MODEL ?? 'gpt-4o-transcribe', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_MODEL: 'eleven_multilingual_v2',
+  OPENAI_MODEL: process.env.OPENAI_MODEL ?? 'gpt-4.1', OPENAI_TRANSCRIBE_MODEL: 'gpt-4o-transcribe', OPENAI_SEARCH_MODEL: 'gpt-4.1', OPENAI_VOICE_MODEL: process.env.OPENAI_VOICE_MODEL ?? 'gpt-4.1-mini', OPENAI_VOICE_TRANSCRIBE_MODEL: process.env.OPENAI_VOICE_TRANSCRIBE_MODEL ?? 'gpt-4o-transcribe', OPENAI_REALTIME_MODEL: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime', OPENAI_REALTIME_VOICE: process.env.OPENAI_REALTIME_VOICE ?? 'marin', OPENAI_TTS_MODEL: 'gpt-4o-mini-tts', OPENAI_TTS_VOICE: 'marin', ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY, ELEVENLABS_MODEL: process.env.ELEVENLABS_MODEL ?? 'eleven_v4', ELEVENLABS_MODEL_FAST: process.env.ELEVENLABS_MODEL_FAST ?? 'eleven_v4_turbo',
   NOTION_TOKEN: 'demo', NOTION_VERSION: '2022-06-28', WEB_PASSWORD: process.env.WEB_PASSWORD ?? 'demo-password',
 } as Config;
 
@@ -113,7 +113,9 @@ const s: Services = {
   llm: process.env.OPENAI_API_KEY ? new OpenAi(process.env.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }) : new DemoLlm(ZONE),
   notion: async () => repo,
   calendar,
-  tts: process.env.OPENAI_API_KEY ? new OpenAiTts(process.env.OPENAI_API_KEY, 'gpt-4o-mini-tts', async () => { const st = await settings.get(); return { voice: st.ttsVoice, style: st.ttsStyle }; }) : undefined,
+  tts: cfg.ELEVENLABS_API_KEY
+    ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, { fast: cfg.ELEVENLABS_MODEL_FAST, quality: cfg.ELEVENLABS_MODEL }, async () => { const st = await settings.get(); return { voice: st.elevenVoice, style: st.ttsStyle }; })
+    : process.env.OPENAI_API_KEY ? new OpenAiTts(process.env.OPENAI_API_KEY, 'gpt-4o-mini-tts', async () => { const st = await settings.get(); return { voice: st.ttsVoice, style: st.ttsStyle }; }) : undefined,
   notify: async (html) => console.log(`\n[notify → Telegram]\n${html.replace(/<[^>]+>/g, '')}\n`),
 };
 const agent = new Agent(s);
@@ -133,6 +135,7 @@ const token = await createLoginToken(db, 24 * 60);
 console.log(`
   Demo is running (in-memory data, nothing leaves this machine${process.env.OPENAI_API_KEY ? ' except OpenAI calls' : ''}).
   Model: ${process.env.OPENAI_API_KEY ? `OpenAI ${cfg.OPENAI_MODEL}` : 'keyword stub (set OPENAI_API_KEY for the real agent)'}
+  Voice: ${cfg.ELEVENLABS_API_KEY ? `ElevenLabs (${cfg.ELEVENLABS_MODEL_FAST} live / ${cfg.ELEVENLABS_MODEL} quality)` : process.env.OPENAI_API_KEY ? 'OpenAI gpt-4o-mini-tts' : 'off'}
 
   Open:      http://localhost:${PORT}/#/login?token=${token}
   Password:  ${cfg.WEB_PASSWORD}

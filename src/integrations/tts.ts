@@ -32,30 +32,61 @@ async function pumpPcm(res: Response, onChunk: (pcm: Uint8Array) => void): Promi
   take(true);
 }
 
+/** Native Ukrainian voices from the ElevenLabs library, picked for natural conversational delivery. */
+export const ELEVEN_VOICES: Array<{ id: string; label: string }> = [
+  { id: 'yMBZR4SLoc24wOJLWAB2', label: 'Соломія — жіночий, розмовний' },
+  { id: 'nCqaTnIbLdME87OuQaZY', label: 'Віра — жіночий, природний' },
+  { id: '96XEXOjZRHooATdYA8FY', label: 'Софія — жіночий, теплий' },
+  { id: 'BEprpS2vpgM32yNJpTXq', label: 'Альона — жіночий, спокійний' },
+  { id: 'h9NSQvWZaC4NFusYsxT9', label: 'Артем — чоловічий, глибокий' },
+  { id: 'GVRiwBELe0czFUAJj0nX', label: 'Антон — чоловічий, дружній' },
+  { id: 'Ntd0iVwICtUtA6Fvx27M', label: 'Євгеній — чоловічий, насичений' },
+];
+
+/** Delivery presets mapped onto ElevenLabs voice settings (same ids as VOICE_STYLES). */
+const ELEVEN_STYLE: Record<string, { stability: number; similarity_boost: number; style: number }> = {
+  natural: { stability: 0.45, similarity_boost: 0.8, style: 0.25 },
+  calm: { stability: 0.65, similarity_boost: 0.8, style: 0.1 },
+  energetic: { stability: 0.3, similarity_boost: 0.8, style: 0.5 },
+  business: { stability: 0.75, similarity_boost: 0.85, style: 0 },
+};
+
+/**
+ * ElevenLabs: the most human-sounding option. Two models for one voice:
+ * `fast` for the live conversation (streamed, ~0.15-0.45 s to first sound), `quality` for Telegram
+ * voice notes, briefings and previews where an extra half second does not matter.
+ */
 export class ElevenLabs implements Tts {
   constructor(
     private apiKey: string,
-    private voiceId: string,
-    private model: string,
+    private models: { fast: string; quality: string },
+    private choice: () => Promise<VoiceChoice>,
   ) {}
 
-  async speak(text: string): Promise<Uint8Array> {
-    const res = await http(`https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}`, {
+  private async body(text: string, model: string, override?: Partial<VoiceChoice>) {
+    const c = { ...(await this.choice()), ...override };
+    return { voice: c.voice, json: { text, model_id: model, voice_settings: { ...(ELEVEN_STYLE[c.style] ?? ELEVEN_STYLE.natural!), use_speaker_boost: true } } };
+  }
+
+  async speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> {
+    const b = await this.body(text, this.models.quality, override);
+    const res = await http(`https://api.elevenlabs.io/v1/text-to-speech/${b.voice}`, {
       method: 'POST',
       headers: { 'xi-api-key': this.apiKey, accept: 'audio/mpeg' },
-      query: { output_format: 'mp3_44100_64' },
-      json: { text, model_id: this.model },
+      query: { output_format: 'mp3_44100_128' },
+      json: b.json,
       timeoutMs: 90_000,
     });
     return new Uint8Array(await res.arrayBuffer());
   }
 
   async streamPcm(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void> {
-    const res = await http(`https://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}/stream`, {
+    const b = await this.body(text, this.models.fast);
+    const res = await http(`https://api.elevenlabs.io/v1/text-to-speech/${b.voice}/stream`, {
       method: 'POST',
       headers: { 'xi-api-key': this.apiKey },
-      query: { output_format: 'pcm_24000', optimize_streaming_latency: 3 },
-      json: { text, model_id: this.model },
+      query: { output_format: 'pcm_24000' },
+      json: b.json,
       timeoutMs: 90_000,
     });
     await pumpPcm(res, onChunk);

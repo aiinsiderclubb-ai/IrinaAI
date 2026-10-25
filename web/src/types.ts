@@ -96,6 +96,7 @@ export interface Settings {
   voiceReplies: 'mirror' | 'always' | 'never';
   ttsVoice: string;
   ttsStyle: string;
+  elevenVoice: string;
   workdayStart: string;
   workdayEnd: string;
   planCalendar: 'work' | 'personal';

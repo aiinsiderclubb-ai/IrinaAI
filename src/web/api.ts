@@ -14,7 +14,7 @@ import { kvGet, kvSet } from '../store/kv.js';
 import { signState } from '../lib/crypto.js';
 import { errMsg } from '../lib/log.js';
 import { HHMM } from '../lib/time.js';
-import { OPENAI_VOICES, OpenAiTts, plainForSpeech, VOICE_STYLES } from '../integrations/tts.js';
+import { ELEVEN_VOICES, ElevenLabs, OPENAI_VOICES, OpenAiTts, plainForSpeech, VOICE_STYLES } from '../integrations/tts.js';
 import { buildToday } from '../modules/dashboard.js';
 import { summarize } from '../modules/finance.js';
 import { classifyImport } from '../modules/importer.js';
@@ -48,6 +48,7 @@ const settingsPatch = z
     voiceReplies: z.enum(['mirror', 'always', 'never']),
     ttsVoice: z.enum(OPENAI_VOICES.map((v) => v.id) as [string, ...string[]]),
     ttsStyle: z.enum(Object.keys(VOICE_STYLES) as [string, ...string[]]),
+    elevenVoice: z.enum(ELEVEN_VOICES.map((v) => v.id) as [string, ...string[]]),
     planCalendar: z.enum(['work', 'personal']),
     mirrorDetails: z.boolean(),
     eventsTopics: z.array(z.string().trim().min(1)).max(3),
@@ -385,19 +386,22 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   registerRealtime(app, s, opts.realtimeSecret);
 
   /** Voice picker: catalogue + a sample in the chosen voice/style (not saved). */
+  const provider = () => (s.tts instanceof ElevenLabs ? 'elevenlabs' : s.tts instanceof OpenAiTts ? 'openai' : s.tts ? 'other' : 'none');
+
   app.get('/api/voice/options', async () => ({
-    provider: s.tts instanceof OpenAiTts ? 'openai' : s.tts ? 'elevenlabs' : 'none',
-    voices: OPENAI_VOICES,
+    provider: provider(),
+    voices: s.tts instanceof ElevenLabs ? ELEVEN_VOICES : OPENAI_VOICES,
     styles: Object.entries(VOICE_STYLES).map(([id, v]) => ({ id, label: v.label })),
   }));
 
   app.post<{ Body: { voice?: string; style?: string } }>('/api/voice/preview', async (req, reply) => {
     if (!s.tts) return reply.code(404).send({ error: 'Голос не підключено' });
-    const voice = OPENAI_VOICES.find((v) => v.id === req.body?.voice)?.id;
+    const catalogue = s.tts instanceof ElevenLabs ? ELEVEN_VOICES : OPENAI_VOICES;
+    const voice = catalogue.find((v) => v.id === req.body?.voice)?.id;
     const style = req.body?.style && req.body.style in VOICE_STYLES ? req.body.style : undefined;
     const st = await s.settings.get();
     const text = `Привіт${st.ownerName ? `, ${st.ownerName}` : ''}! Я ${st.assistantName}. О третій у тебе рев’ю дизайну, а до того є хвилин сорок — можемо швиденько закрити лист юристу. Як тобі?`;
-    const mp3 = s.tts instanceof OpenAiTts ? await s.tts.speak(text, { voice, style }) : await s.tts.speak(text);
+    const mp3 = s.tts instanceof ElevenLabs || s.tts instanceof OpenAiTts ? await s.tts.speak(text, { voice, style }) : await s.tts.speak(text);
     return { audio: Buffer.from(mp3).toString('base64') };
   });
 

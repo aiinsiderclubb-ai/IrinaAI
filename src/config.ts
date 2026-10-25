@@ -35,8 +35,12 @@ const schema = z.object({
   OPENAI_TTS_VOICE: z.string().default('marin'),
 
   ELEVENLABS_API_KEY: opt(z.string()),
+  /** optional default voice; normally chosen in the cabinet (Опції → Голос) */
   ELEVENLABS_VOICE_ID: opt(z.string()),
-  ELEVENLABS_MODEL: z.string().default('eleven_multilingual_v2'),
+  /** quality model: Telegram voice notes, briefings, previews */
+  ELEVENLABS_MODEL: z.string().default('eleven_v4'),
+  /** low-latency model for the live conversation */
+  ELEVENLABS_MODEL_FAST: z.string().default('eleven_v4_turbo'),
 
   NOTION_TOKEN: opt(z.string()),
   NOTION_VERSION: z.string().default('2022-06-28'),

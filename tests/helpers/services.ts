@@ -62,6 +62,7 @@ export const testConfig = (): Config =>
     OPENAI_TTS_MODEL: 'gpt-4o-mini-tts',
     OPENAI_TTS_VOICE: 'marin',
     ELEVENLABS_MODEL: 'm',
+    ELEVENLABS_MODEL_FAST: 'm-fast',
     NOTION_VERSION: '2022-06-28',
   }) as Config;
 

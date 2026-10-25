@@ -188,3 +188,30 @@ describe('voice choice', () => {
     expect(opts.styles.map((v: { id: string }) => v.id)).toEqual(['natural', 'calm', 'energetic', 'business']);
   });
 });
+
+describe('ElevenLabs', () => {
+  it('live stream uses the fast model, voice notes the quality model, both with the chosen voice and style', async () => {
+    const { ElevenLabs } = await import('../src/integrations/tts.js');
+    const calls: Array<{ url: string; body: any }> = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: URL | string, init: RequestInit) => {
+      calls.push({ url: String(url), body: JSON.parse(String(init.body)) });
+      return new Response(new Uint8Array(9600), { status: 200 });
+    }) as never;
+    try {
+      const tts = new ElevenLabs('k', { fast: 'eleven_v4_turbo', quality: 'eleven_v4' }, async () => ({ voice: 'VOICE1', style: 'calm' }));
+      const chunks: number[] = [];
+      await tts.streamPcm('Привіт.', (c) => chunks.push(c.length));
+      await tts.speak('Привіт.');
+      await tts.speak('Привіт.', { voice: 'VOICE2' });
+      expect(chunks.reduce((a, b) => a + b, 0)).toBe(9600);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(calls[0]!.url).toContain('/text-to-speech/VOICE1/stream?output_format=pcm_24000');
+    expect(calls[0]!.body.model_id).toBe('eleven_v4_turbo');
+    expect(calls[1]!.body.model_id).toBe('eleven_v4');
+    expect(calls[1]!.body.voice_settings.stability).toBe(0.65);
+    expect(calls[2]!.url).toContain('/VOICE2?');
+  });
+});

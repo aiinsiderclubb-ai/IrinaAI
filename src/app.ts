@@ -58,14 +58,16 @@ export function createServices(cfg: Config, db: Db): Services {
     calendar: googleAuth ? new GoogleCalendar(googleAuth) : undefined,
     youtube: googleAuth ? new YouTubeClient(googleAuth, clock) : undefined,
     instagram,
-    // ElevenLabs when configured (one chosen voice), otherwise OpenAI speech on the same key
-    tts:
-      cfg.ELEVENLABS_API_KEY && cfg.ELEVENLABS_VOICE_ID
-        ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, cfg.ELEVENLABS_VOICE_ID, cfg.ELEVENLABS_MODEL)
-        : new OpenAiTts(cfg.OPENAI_API_KEY, cfg.OPENAI_TTS_MODEL, async () => {
-            const st = await settings.get();
-            return { voice: st.ttsVoice || cfg.OPENAI_TTS_VOICE, style: st.ttsStyle };
-          }),
+    // ElevenLabs when a key is set (most human), otherwise OpenAI speech on the same key
+    tts: cfg.ELEVENLABS_API_KEY
+      ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, { fast: cfg.ELEVENLABS_MODEL_FAST, quality: cfg.ELEVENLABS_MODEL }, async () => {
+          const st = await settings.get();
+          return { voice: cfg.ELEVENLABS_VOICE_ID && !st.elevenVoice ? cfg.ELEVENLABS_VOICE_ID : st.elevenVoice, style: st.ttsStyle };
+        })
+      : new OpenAiTts(cfg.OPENAI_API_KEY, cfg.OPENAI_TTS_MODEL, async () => {
+          const st = await settings.get();
+          return { voice: st.ttsVoice || cfg.OPENAI_TTS_VOICE, style: st.ttsStyle };
+        }),
     notify: async () => {
       throw new Error('notify is not wired yet');
     },

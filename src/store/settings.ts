@@ -15,6 +15,8 @@ export interface Settings {
   ttsVoice: string;
   /** delivery preset (see VOICE_STYLES) */
   ttsStyle: string;
+  /** ElevenLabs voice id (see ELEVEN_VOICES); used when an ElevenLabs key is set */
+  elevenVoice: string;
   /** mirror = voice in -> voice out */
   voiceReplies: 'mirror' | 'always' | 'never';
   workdayStart: string;
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   voiceReplies: 'mirror',
   ttsVoice: 'coral',
   ttsStyle: 'natural',
+  elevenVoice: 'yMBZR4SLoc24wOJLWAB2',
   workdayStart: '09:00',
   workdayEnd: '19:00',
   planCalendar: 'work',
