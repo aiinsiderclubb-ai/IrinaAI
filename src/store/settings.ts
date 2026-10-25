@@ -11,6 +11,10 @@ export interface Settings {
   language: 'uk' | 'ru' | 'en';
   morningTime: string;
   eveningTime: string;
+  /** OpenAI voice id (see OPENAI_VOICES); ignored when ElevenLabs is configured */
+  ttsVoice: string;
+  /** delivery preset (see VOICE_STYLES) */
+  ttsStyle: string;
   /** mirror = voice in -> voice out */
   voiceReplies: 'mirror' | 'always' | 'never';
   workdayStart: string;
@@ -38,6 +42,8 @@ export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   morningTime: '08:00',
   eveningTime: '20:00',
   voiceReplies: 'mirror',
+  ttsVoice: 'coral',
+  ttsStyle: 'natural',
   workdayStart: '09:00',
   workdayEnd: '19:00',
   planCalendar: 'work',

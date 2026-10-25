@@ -113,7 +113,7 @@ const s: Services = {
   llm: process.env.OPENAI_API_KEY ? new OpenAi(process.env.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }) : new DemoLlm(ZONE),
   notion: async () => repo,
   calendar,
-  tts: process.env.OPENAI_API_KEY ? new OpenAiTts(process.env.OPENAI_API_KEY) : undefined,
+  tts: process.env.OPENAI_API_KEY ? new OpenAiTts(process.env.OPENAI_API_KEY, 'gpt-4o-mini-tts', async () => { const st = await settings.get(); return { voice: st.ttsVoice, style: st.ttsStyle }; }) : undefined,
   notify: async (html) => console.log(`\n[notify → Telegram]\n${html.replace(/<[^>]+>/g, '')}\n`),
 };
 const agent = new Agent(s);

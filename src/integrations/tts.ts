@@ -85,31 +85,77 @@ export function plainForSpeech(text: string): string {
     .trim();
 }
 
-/** OpenAI speech (works with the client's existing OpenAI key; ElevenLabs is optional). */
+/** OpenAI voices usable with gpt-4o-mini-tts (labels for the settings screen). */
+export const OPENAI_VOICES: Array<{ id: string; label: string }> = [
+  { id: 'marin', label: 'Marin — жіночий, спокійний' },
+  { id: 'coral', label: 'Coral — жіночий, теплий' },
+  { id: 'sage', label: 'Sage — жіночий, м’який' },
+  { id: 'shimmer', label: 'Shimmer — жіночий, світлий' },
+  { id: 'nova', label: 'Nova — жіночий, бадьорий' },
+  { id: 'cedar', label: 'Cedar — чоловічий, глибокий' },
+  { id: 'ballad', label: 'Ballad — чоловічий, оксамитовий' },
+  { id: 'verse', label: 'Verse — чоловічий, живий' },
+  { id: 'ash', label: 'Ash — чоловічий, рівний' },
+];
+
+/** Delivery presets: gpt-4o-mini-tts follows free-text instructions on how to speak. */
+export const VOICE_STYLES: Record<string, { label: string; instructions: string }> = {
+  natural: {
+    label: 'Природна розмова',
+    instructions:
+      'Говори як жива людина в дружній розмові, а не як диктор. Природні паузи, легкі зміни інтонації, теплота і легка усмішка в голосі. Помірний, невимушений темп. Чиста українська вимова з правильними наголосами.',
+  },
+  calm: {
+    label: 'Спокійна, впевнена',
+    instructions:
+      'Говори спокійно і впевнено, як досвідчений особистий асистент: рівний темп, м’які паузи між думками, без поспіху і без пафосу. Чиста українська вимова з правильними наголосами.',
+  },
+  energetic: {
+    label: 'Енергійна',
+    instructions:
+      'Говори бадьоро і з ентузіазмом, як друг, який радий допомогти: жвавий темп, виразні інтонації, але без крику. Чиста українська вимова з правильними наголосами.',
+  },
+  business: {
+    label: 'Ділова, коротка',
+    instructions:
+      'Говори чітко і по-діловому, як топ-асистент керівника: зібрано, без зайвих емоцій, з короткими паузами. Чиста українська вимова з правильними наголосами.',
+  },
+};
+
+export interface VoiceChoice {
+  voice: string;
+  style: string;
+}
+
+/**
+ * OpenAI speech (works with the client's existing OpenAI key; ElevenLabs is optional).
+ * Voice and delivery come from settings on every call, so a change in the cabinet applies immediately.
+ */
 export class OpenAiTts implements Tts {
   constructor(
     private apiKey: string,
     private model = 'gpt-4o-mini-tts',
-    private voice = 'marin',
+    private choice: () => Promise<VoiceChoice> = async () => ({ voice: 'marin', style: 'natural' }),
   ) {}
 
-  private request(text: string, format: 'mp3' | 'pcm') {
+  private async request(text: string, format: 'mp3' | 'pcm', override?: Partial<VoiceChoice>) {
+    const c = { ...(await this.choice()), ...override };
     return http('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: { authorization: `Bearer ${this.apiKey}` },
       json: {
         model: this.model,
-        voice: this.voice,
+        voice: c.voice,
         input: text.slice(0, 3800),
-        instructions: 'Говори українською природно, тепло і впевнено, в помірному темпі, як особистий асистент.',
+        instructions: (VOICE_STYLES[c.style] ?? VOICE_STYLES.natural!).instructions,
         response_format: format,
       },
       timeoutMs: 60_000,
     });
   }
 
-  async speak(text: string): Promise<Uint8Array> {
-    return new Uint8Array(await (await this.request(text, 'mp3')).arrayBuffer());
+  async speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> {
+    return new Uint8Array(await (await this.request(text, 'mp3', override)).arrayBuffer());
   }
 
   async streamPcm(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void> {

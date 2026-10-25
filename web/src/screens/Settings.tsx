@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import type { IntegrationState, Memory, Settings, Status } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
@@ -33,9 +33,9 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     setError(null);
     try {
-      const { assistantName, ownerName, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
+      const { assistantName, ownerName, ttsVoice, ttsStyle, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
       const eventsTopics = form.eventsTopics.map((t) => t.trim()).filter(Boolean);
-      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
+      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), ttsVoice, ttsStyle, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
       settings.setData(next);
       toast('Збережено');
     } catch (err) {
@@ -116,6 +116,8 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
               </label>
             </div>
           </section>
+
+          <VoicePicker form={form} set={set} />
 
           <section className="card">
             <div className="card-head">
@@ -254,5 +256,77 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
         </form>
       )}
     </div>
+  );
+}
+
+interface VoiceOptions {
+  provider: 'openai' | 'elevenlabs' | 'none';
+  voices: Array<{ id: string; label: string }>;
+  styles: Array<{ id: string; label: string }>;
+}
+
+function VoicePicker({ form, set }: { form: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }) {
+  const opts = useLoad<VoiceOptions>('/api/voice/options');
+  const [playing, setPlaying] = useState(false);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const toast = useToast();
+
+  const preview = async () => {
+    audio.current?.pause();
+    setPlaying(true);
+    try {
+      const r = await api.post<{ audio: string }>('/api/voice/preview', { voice: form.ttsVoice, style: form.ttsStyle });
+      const a = new Audio(`data:audio/mpeg;base64,${r.audio}`);
+      audio.current = a;
+      a.onended = () => setPlaying(false);
+      await a.play();
+    } catch (e) {
+      setPlaying(false);
+      toast(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const o = opts.data;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Голос</h2>
+        <span className="count">{o?.provider === 'elevenlabs' ? 'ElevenLabs' : o?.provider === 'openai' ? 'OpenAI' : ''}</span>
+      </div>
+      {o?.provider === 'elevenlabs' ? (
+        <div className="empty">Голос задано в ElevenLabs (ELEVENLABS_VOICE_ID). Щоб змінити — оберіть інший голос у ElevenLabs.</div>
+      ) : (
+        <div className="form-grid">
+          <label className="field">
+            Голос
+            <select className="select" value={form.ttsVoice} onChange={(e) => set('ttsVoice', e.target.value)}>
+              {o?.voices.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            Манера
+            <select className="select" value={form.ttsStyle} onChange={(e) => set('ttsStyle', e.target.value)}>
+              {o?.styles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="field" style={{ justifyContent: 'flex-end' }}>
+            <button type="button" className="btn" onClick={preview} disabled={playing || o?.provider === 'none'}>
+              {playing ? 'Звучить…' : '▶ Прослухати'}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="empty" style={{ paddingTop: 0 }}>
+        Голос використовується в Telegram, ядрі та брифінгах. Найбільш людяний варіант — ElevenLabs (потрібен ключ).
+      </div>
+    </section>
   );
 }

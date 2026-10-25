@@ -62,7 +62,10 @@ export function createServices(cfg: Config, db: Db): Services {
     tts:
       cfg.ELEVENLABS_API_KEY && cfg.ELEVENLABS_VOICE_ID
         ? new ElevenLabs(cfg.ELEVENLABS_API_KEY, cfg.ELEVENLABS_VOICE_ID, cfg.ELEVENLABS_MODEL)
-        : new OpenAiTts(cfg.OPENAI_API_KEY, cfg.OPENAI_TTS_MODEL, cfg.OPENAI_TTS_VOICE),
+        : new OpenAiTts(cfg.OPENAI_API_KEY, cfg.OPENAI_TTS_MODEL, async () => {
+            const st = await settings.get();
+            return { voice: st.ttsVoice || cfg.OPENAI_TTS_VOICE, style: st.ttsStyle };
+          }),
     notify: async () => {
       throw new Error('notify is not wired yet');
     },

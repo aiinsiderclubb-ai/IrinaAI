@@ -146,3 +146,45 @@ describe('/api/voice/stream', () => {
     expect(evs.at(-1)).toMatchObject({ type: 'error', message: 'openai down' });
   });
 });
+
+describe('voice choice', () => {
+  it('voice and style from settings are used on every call, preview can override without saving', async () => {
+    const { OpenAiTts } = await import('../src/integrations/tts.js');
+    const env = await makeEnv({ settings: { ttsVoice: 'cedar', ttsStyle: 'calm' } });
+    const bodies: any[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response(new Uint8Array([1, 2]), { status: 200 });
+    }) as never;
+    try {
+      const tts = new OpenAiTts('k', 'gpt-4o-mini-tts', async () => {
+        const st = await env.s.settings.get();
+        return { voice: st.ttsVoice, style: st.ttsStyle };
+      });
+      await tts.speak('раз');
+      await env.s.settings.update({ ttsVoice: 'coral', ttsStyle: 'natural' });
+      await tts.speak('два');
+      await tts.speak('три', { voice: 'ash' });
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(bodies.map((b) => b.voice)).toEqual(['cedar', 'coral', 'ash']);
+    expect(bodies[0].instructions).toContain('спокійно');
+    expect(bodies[1].instructions).toContain('жива людина');
+    expect((await env.s.settings.get()).ttsVoice).toBe('coral');
+  });
+
+  it('settings API accepts only known voices and styles', async () => {
+    const env = await makeEnv();
+    const app = buildServer(env.s, {} as never);
+    await registerWeb(app, env.s, new Agent(env.s), { serveStatic: false });
+    const cookie = `${SESSION_COOKIE}=${issueSession(env.s.cfg.APP_SECRET, 42, env.s.clock().getTime())}`;
+    const patch = (payload: object) => app.inject({ method: 'PATCH', url: '/api/settings', headers: { 'x-requested-with': 'aia', cookie }, payload });
+    expect((await patch({ ttsVoice: 'robot9000' })).statusCode).toBe(400);
+    expect((await patch({ ttsVoice: 'verse', ttsStyle: 'energetic' })).json()).toMatchObject({ ttsVoice: 'verse', ttsStyle: 'energetic' });
+    const opts = (await app.inject({ url: '/api/voice/options', headers: { cookie } })).json();
+    expect(opts.voices.map((v: { id: string }) => v.id)).toContain('coral');
+    expect(opts.styles.map((v: { id: string }) => v.id)).toEqual(['natural', 'calm', 'energetic', 'business']);
+  });
+});

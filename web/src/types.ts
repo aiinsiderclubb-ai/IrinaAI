@@ -94,6 +94,8 @@ export interface Settings {
   morningTime: string;
   eveningTime: string;
   voiceReplies: 'mirror' | 'always' | 'never';
+  ttsVoice: string;
+  ttsStyle: string;
   workdayStart: string;
   workdayEnd: string;
   planCalendar: 'work' | 'personal';
