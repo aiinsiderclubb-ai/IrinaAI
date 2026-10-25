@@ -80,6 +80,8 @@ export function Core({ onChanged }: { onChanged: () => void }) {
   const [muted, setMuted] = useState(false);
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState('');
+  const [material, setMaterial] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [engine, setEngine] = useState<VoiceEngine | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<CoreScene | null>(null);
@@ -192,6 +194,19 @@ export function Core({ onChanged }: { onChanged: () => void }) {
     const text = draft.trim();
     if (!text) return;
     setDraft('');
+    if (material) {
+      // a pasted ChatGPT / Dot answer: file it into a project instead of answering it
+      setMaterial(false);
+      try {
+        const r = await api.post<{ proposal: Proposal }>('/api/import', { text });
+        push('assistant', 'Куди зберегти цей матеріал? Підтверди праворуч.');
+        setCards((c) => [...c, r.proposal]);
+        onChanged();
+      } catch (err) {
+        push('system', err instanceof ApiError ? err.message : String(err));
+      }
+      return;
+    }
     push('user', text);
     setStatus('thinking');
     try {
@@ -240,9 +255,11 @@ export function Core({ onChanged }: { onChanged: () => void }) {
       <div className="core-vignette" aria-hidden="true" />
 
       <header className="core-top">
-        <button className="core-chip" onClick={() => go('today')}>
-          ← Кабінет
-        </button>
+        <div>
+          <button className="core-chip core-exit" onClick={() => go('day')}>
+            ← День
+          </button>
+        </div>
         <div className="core-title">
           <span className="core-name">{name}</span>
           <span className="core-state">
@@ -250,14 +267,22 @@ export function Core({ onChanged }: { onChanged: () => void }) {
             {engine && active && <em>{engine.kind === 'realtime' ? ' · миттєвий канал' : ' · стандартний канал'}</em>}
           </span>
         </div>
-        <button className={`core-chip ${handsFree ? 'on' : ''}`} onClick={toggleHandsFree} title="Слухаю постійно, відповідаю, коли кличуть на ім’я">
-          {handsFree ? '● На зв’язку' : '○ На зв’язку'}
-        </button>
+        <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+          <button className={`core-chip ${handsFree ? 'on' : ''}`} onClick={toggleHandsFree} title="Слухаю постійно, відповідаю, коли кличуть на ім’я">
+            {handsFree ? '● На зв’язку' : '○ На зв’язку'}
+          </button>
+          <button className={`core-chip ${drawer ? 'on' : ''}`} onClick={() => setDrawer(!drawer)}>
+            Історія
+          </button>
+        </div>
       </header>
 
+      {drawer && <HistoryDrawer live={lines} onClose={() => setDrawer(false)} name={name} />}
+
       <aside className="core-hud core-hud-left">
-        <div className="hud-time">{now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</div>
-        <div className="hud-date">{now.toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        {/* the owner's time zone, not the browser's: the calendar and reports live there */}
+        <div className="hud-time">{now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: t?.timezone })}</div>
+        <div className="hud-date">{now.toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long', timeZone: t?.timezone })}</div>
         <div className="hud-block">
           <div className="hud-label">Далі</div>
           {next ? (
@@ -322,7 +347,10 @@ export function Core({ onChanged }: { onChanged: () => void }) {
       <footer className="core-controls">
         {typing ? (
           <form className="core-input" onSubmit={ask}>
-            <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Напиши ${name}…`} aria-label="Повідомлення" />
+            <button type="button" className={`core-chip ${material ? 'on' : ''}`} onClick={() => setMaterial(!material)} title="Вставити відповідь ChatGPT / Dot і зберегти у проєкт">
+              Матеріал
+            </button>
+            <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={material ? 'Встав відповідь ChatGPT / Dot…' : `Напиши ${name}…`} aria-label="Повідомлення" />
             <button className="core-round sm" aria-label="Надіслати" disabled={!draft.trim()}>
               <IconSend />
             </button>
@@ -355,5 +383,37 @@ export function Core({ onChanged }: { onChanged: () => void }) {
       {/* tap on the core itself starts/stops the conversation */}
       <button className="core-hit" onClick={active ? stop : start} aria-label={active ? 'Завершити розмову' : 'Почати розмову'} />
     </div>
+  );
+}
+
+function HistoryDrawer({ live, onClose, name }: { live: Line[]; onClose: () => void; name: string }) {
+  const { data } = useLoad<{ messages: Array<{ role: 'user' | 'assistant'; content: string }> }>('/api/history');
+  const end = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [data, live.length]);
+  // server history already contains this session's turns (they are saved as they happen)
+  const items = data?.messages ?? live.filter((l) => l.role !== 'system').map((l) => ({ role: l.role as 'user' | 'assistant', content: l.text }));
+  return (
+    <aside className="core-drawer" aria-label="Історія розмови">
+      <header>
+        <span className="hud-label" style={{ margin: 0 }}>
+          Історія · Telegram і веб
+        </span>
+        <button className="core-chip" onClick={onClose}>
+          Закрити
+        </button>
+      </header>
+      <div className="log">
+        {items.length === 0 && <div className="hud-sub">Поки порожньо.</div>}
+        {items.map((m, i) => (
+          <div key={i} className={`msg ${m.role}`}>
+            <span className="who">{m.role === 'user' ? 'Ти' : name}</span>
+            {m.content}
+          </div>
+        ))}
+        <div ref={end} />
+      </div>
+    </aside>
   );
 }

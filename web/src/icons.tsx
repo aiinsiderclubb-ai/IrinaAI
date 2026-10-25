@@ -17,3 +17,4 @@ export const IconPlus = P('M12 5v14M5 12h14');
 export const IconChevronL = P('M15 6l-6 6 6 6');
 export const IconChevronR = P('M9 6l6 6-6 6');
 export const IconLogo = P('M6 19l6-14 6 14M8.5 14h7');
+export const IconOrb = P('M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0M3 9.5c5 3 13 3 18 0');

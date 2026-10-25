@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 function readHash(): { route: string; params: URLSearchParams } {
   const raw = window.location.hash.replace(/^#\/?/, '');
   const [route, query] = raw.split('?');
-  return { route: route || 'today', params: new URLSearchParams(query ?? '') };
+  return { route: route || 'core', params: new URLSearchParams(query ?? '') };
 }
 
 export function useHash() {

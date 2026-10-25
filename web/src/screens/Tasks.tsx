@@ -4,7 +4,7 @@ import { todayIso } from '../format';
 import { IconPlus } from '../icons';
 import type { Task } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
-import { TaskRow, useCompleteTask } from './Today';
+import { TaskRow, useCompleteTask } from './Day';
 
 export function Tasks() {
   const [project, setProject] = useState('');

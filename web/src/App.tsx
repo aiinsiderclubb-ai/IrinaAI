@@ -1,28 +1,26 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
-import { IconChat, IconLogo, IconMic, IconMoney, IconSettings, IconSocial, IconTasks, IconToday } from './icons';
-import { Chat } from './screens/Chat';
+import { IconLogo, IconMoney, IconOrb, IconSettings, IconTasks, IconToday } from './icons';
 import { Finance } from './screens/Finance';
 import { Login } from './screens/Login';
 import { SettingsScreen } from './screens/Settings';
-import { Social } from './screens/Social';
 import { Tasks } from './screens/Tasks';
-import { TodayScreen } from './screens/Today';
+import { Day } from './screens/Day';
 // three.js is heavy: load the core only when it is opened
 const Core = lazy(() => import('./screens/Core').then((m) => ({ default: m.Core })));
 import { useNudges } from './nudges';
 import { Loading, ToastHost } from './ui';
 
 const ROUTES = [
-  { path: 'today', label: 'Сьогодні', short: 'Сьогодні', icon: IconToday },
-  { path: 'voice', label: 'Ядро', short: 'Ядро', icon: IconMic },
-  { path: 'chat', label: 'Чат', short: 'Чат', icon: IconChat },
-  { path: 'tasks', label: 'Задачі', short: 'Задачі', icon: IconTasks },
-  { path: 'finance', label: 'Фінанси', short: 'Фінанси', icon: IconMoney },
-  { path: 'social', label: 'Соцмережі', short: 'Метрики', icon: IconSocial },
-  { path: 'settings', label: 'Налаштування', short: 'Опції', icon: IconSettings },
+  { path: 'core', label: 'Ядро', icon: IconOrb },
+  { path: 'day', label: 'День', icon: IconToday },
+  { path: 'tasks', label: 'Задачі', icon: IconTasks },
+  { path: 'finance', label: 'Фінанси', icon: IconMoney },
+  { path: 'settings', label: 'Опції', icon: IconSettings },
 ] as const;
+/** old links keep working */
+const ALIASES: Record<string, string> = { voice: 'core', today: 'day', chat: 'core', social: 'day' };
 type Route = (typeof ROUTES)[number]['path'];
 
 export function App() {
@@ -63,48 +61,40 @@ export function App() {
           passwordLogin={auth.password}
           onDone={() => {
             setAuth({ ...auth, ok: true });
-            go('today');
+            go('core');
           }}
         />
       </ToastHost>
     );
 
-  const current: Route = (ROUTES.find((r) => r.path === route)?.path ?? 'today') as Route;
-  // the core is immersive: full screen, no navigation chrome
-  if (current === 'voice')
-    return (
-      <ToastHost>
-        <Suspense fallback={<div className="core" />}>
-          <Core onChanged={refreshPending} />
-        </Suspense>
-      </ToastHost>
-    );
+  const resolved = ALIASES[route] ?? route;
+  const current: Route = (ROUTES.find((r) => r.path === resolved)?.path ?? 'core') as Route;
   return (
     <ToastHost>
-      <div className="shell">
+      <div className={`shell ${current === 'core' ? 'shell-core' : ''}`}>
         <nav className="side" aria-label="Розділи">
-          <div className="brand">
+          <a className="brand" href="#/core" aria-label="Ядро">
             <span className="brand-mark">
               <IconLogo size={18} />
             </span>
-            Асистент
-          </div>
-          {ROUTES.map(({ path, label, short, icon: Icon }) => (
+          </a>
+          {ROUTES.map(({ path, label, icon: Icon }) => (
             <a key={path} href={`#/${path}`} className={`nav-item ${current === path ? 'active' : ''}`} aria-current={current === path ? 'page' : undefined}>
               <Icon />
-              <span className="label-long">{label}</span>
-              <span className="label-short">{short}</span>
-              {path === 'chat' && pending > 0 && <span className="nav-badge">{pending}</span>}
+              <span>{label}</span>
+              {path === 'day' && pending > 0 && <span className="nav-badge">{pending}</span>}
             </a>
           ))}
-          <div className="side-foot">Також доступний у Telegram</div>
         </nav>
-        <main className="main">
-          {current === 'today' && <TodayScreen onChanged={refreshPending} />}
-          {current === 'chat' && <Chat onChanged={refreshPending} />}
+        <main className={current === 'core' ? 'main main-full' : 'main'}>
+          {current === 'core' && (
+            <Suspense fallback={<div className="core" />}>
+              <Core onChanged={refreshPending} />
+            </Suspense>
+          )}
+          {current === 'day' && <Day onChanged={refreshPending} />}
           {current === 'tasks' && <Tasks />}
           {current === 'finance' && <Finance />}
-          {current === 'social' && <Social />}
           {current === 'settings' && <SettingsScreen onLogout={() => setAuth({ ...auth, ok: false })} />}
         </main>
       </div>
