@@ -63,7 +63,7 @@ Login: send **/web** to the bot → one-time link (10 min, token in the URL frag
 cookie for 30 days. Optional `WEB_PASSWORD` adds a password form (5 attempts / 15 min). Mutating API calls require an
 `X-Requested-With: aia` header (CSRF) on top of `SameSite=Lax`.
 
-Code: `src/web/*` (API + auth), `web/` (React + Vite SPA, built into `dist/web` and served by Fastify).
+Code: `src/web/*` (API + auth), `web/` (React + Vite SPA, built into `dist/public` and served by Fastify).
 
 ### Voice ("Jarvis" mode)
 

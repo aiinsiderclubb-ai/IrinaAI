@@ -29,9 +29,12 @@ import { AttemptLimiter, consumeLoginToken, isValidSession, issueSession, passwo
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Built SPA: dist/web next to the compiled server, or ../dist/web when running from src with tsx. */
+/**
+ * Built SPA lives in dist/public (not dist/web: that folder holds this compiled server code and Vite empties its outDir).
+ * From dist/web/api.js -> ../public; from src/web/api.ts (tsx) -> ../../dist/public.
+ */
 export function findWebRoot(): string | undefined {
-  return [join(here, '..', 'web'), join(here, '..', '..', 'dist', 'web')].find((d) => existsSync(join(d, 'index.html')));
+  return [join(here, '..', 'public'), join(here, '..', '..', 'dist', 'public')].find((d) => existsSync(join(d, 'index.html')));
 }
 
 const card = (p: PendingAction) => ({ id: p.id, kind: p.kind, summary: p.summary, project: p.payload?.project ?? null, createdAt: p.createdAt });
