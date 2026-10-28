@@ -8,6 +8,8 @@ export interface Settings {
   assistantName: string;
   /** how the assistant addresses the owner ("ти" + name) */
   ownerName: string;
+  /** grammatical gender for addressing the owner: «ти заслужила» vs «ти заслужив» */
+  ownerGender: 'female' | 'male' | '';
   language: 'uk' | 'ru' | 'en';
   morningTime: string;
   eveningTime: string;
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   timezone,
   assistantName: 'Асистент',
   ownerName: '',
+  ownerGender: '',
   language: 'uk',
   morningTime: '08:00',
   eveningTime: '20:00',

@@ -4,7 +4,7 @@ import { runPending } from '../actions.js';
 import type { Agent, AgentReply } from '../agent/agent.js';
 import { webUrl } from '../config.js';
 import { signState } from '../lib/crypto.js';
-import { transcriptionHint } from '../lib/wake.js';
+import { isPhantomTranscript, transcriptionHint } from '../lib/wake.js';
 import { createLoginToken } from '../web/auth.js';
 import { errMsg } from '../lib/log.js';
 import { classifyImport } from '../modules/importer.js';
@@ -214,7 +214,8 @@ export function createBot(s: Services, agent: Agent): Bot {
     await bot.api.sendChatAction(chatId, 'typing').catch(() => {});
     const audio = await s.downloadFile!(file.file_id);
     const st = await s.settings.get();
-    const text = await s.llm.transcribe(audio, name, file.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
+    const heard = await s.llm.transcribe(audio, name, file.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
+    const text = isPhantomTranscript(heard, st.assistantName) ? '' : heard;
     if (!text) return void (await bot.api.sendMessage(chatId, 'Не вдалося розпізнати. Спробуй ще раз, ближче до мікрофона.'));
     await bot.api.sendMessage(chatId, `🎙 ${text}`);
     await ask(chatId, text, true);

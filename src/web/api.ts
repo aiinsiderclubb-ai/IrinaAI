@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { runPending } from '../actions.js';
 import { Agent, type AgentReply } from '../agent/agent.js';
 import { buildVoiceTools } from '../agent/tools.js';
-import { isAddressed, transcriptionHint } from '../lib/wake.js';
+import { isAddressed, isPhantomTranscript, transcriptionHint } from '../lib/wake.js';
 import { kvGet, kvSet } from '../store/kv.js';
 import { signState } from '../lib/crypto.js';
 import { errMsg } from '../lib/log.js';
@@ -45,6 +45,7 @@ const settingsPatch = z
   .object({
     assistantName: z.string().trim().min(1).max(40),
     ownerName: z.string().trim().max(40),
+    ownerGender: z.enum(['female', 'male', '']),
     morningTime: z.string().regex(HHMM),
     eveningTime: z.string().regex(HHMM),
     workdayStart: z.string().regex(HHMM),
@@ -162,7 +163,8 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
     if (!audio?.length) return reply.code(400).send({ error: 'empty' });
     const st = await s.settings.get();
     const conversation = req.query.conversation === '1';
-    const transcript = await s.llm.transcribe(new Uint8Array(audio), `voice.${AUDIO_EXT[mime] ?? 'webm'}`, mime, st.language, transcriptionHint(st.assistantName));
+    const heard = await s.llm.transcribe(new Uint8Array(audio), `voice.${AUDIO_EXT[mime] ?? 'webm'}`, mime, st.language, transcriptionHint(st.assistantName));
+    const transcript = isPhantomTranscript(heard, st.assistantName) ? '' : heard;
     if (!transcript) return { transcript: '', text: conversation ? '' : 'Не вдалося розпізнати голос. Спробуйте ще раз.', proposals: [], skipped: conversation };
     if (req.query.handsFree === '1' && req.query.follow !== '1' && !isAddressed(transcript, st.assistantName)) return { transcript, text: '', proposals: [], skipped: true };
     const r = await (conversation ? voiceAgent : agent).handle(ownerId, transcript);
@@ -201,6 +203,7 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
             transcriptionHint(st.assistantName),
             cfg.OPENAI_VOICE_TRANSCRIBE_MODEL,
           );
+          if (userText && isPhantomTranscript(userText, st.assistantName)) userText = '';
           emit({ type: 'transcript', text: userText, ms: Date.now() - started });
           if (!userText || (req.query.handsFree === '1' && req.query.follow !== '1' && !isAddressed(userText, st.assistantName))) {
             emit({ type: 'skipped' });

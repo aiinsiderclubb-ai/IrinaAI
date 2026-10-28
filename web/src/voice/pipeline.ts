@@ -72,7 +72,7 @@ export class StandardVoice implements VoiceEngine {
     this.calibrateUntil = Date.now() + 600;
     this.timer = window.setInterval(() => this.frame(), FRAME_MS);
     this.h.onStatus('listening');
-    if (info.greet) void this.run({ ask: 'Привітайся коротко і дай брифінг дня: скажи головне про сьогодні у 2–3 реченнях.' });
+    if (info.greet) void this.run({ ask: 'Привітайся коротко і дай брифінг дня у 2–3 реченнях СТРОГО за блоком «СЬОГОДНІ» і «ДЖЕРЕЛА ДАНИХ». Чого там немає — не згадуй; якщо джерела не підключені, так і скажи одним реченням.' });
   }
 
   stop(): void {

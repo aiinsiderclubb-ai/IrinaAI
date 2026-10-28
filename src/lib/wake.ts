@@ -22,3 +22,14 @@ export function isAddressed(transcript: string, name: string): boolean {
 export function transcriptionHint(assistantName: string): string {
   return `Розмова українською з особистим асистентом ${assistantName}. Короткі відповіді: «Так», «Ні», «Підтверджую», «Скасуй», «Давай».`;
 }
+
+/**
+ * On silence or noise the recogniser sometimes returns the context hint itself (or a stock phrase): that is not speech.
+ */
+export function isPhantomTranscript(text: string, assistantName: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (!t) return true;
+  const hint = transcriptionHint(assistantName).toLowerCase();
+  if (hint.includes(t) || t.includes('розмова українською з особистим асистентом')) return true;
+  return /^(дякую за перегляд|субтитри|продовження сліду|thank you for watching)[.!]*$/i.test(t);
+}

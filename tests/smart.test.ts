@@ -74,3 +74,26 @@ describe('prompt rules for a smarter agent', () => {
     expect(JSON.stringify(env.llm.calls[0]!.messages)).toContain('вчорашнє');
   });
 });
+
+describe('honesty and the owner\'s gender', () => {
+  it('prompt marks unconnected sources and unknown data, and fixes the feminine address', async () => {
+    const env = await makeEnv({ settings: { ownerName: 'Ірина', ownerGender: 'female' }, connectCalendars: false });
+    env.s.notion = async () => {
+      throw new Error('Notion не підключено');
+    };
+    const p = await buildSystemPrompt(env.s, 'voice');
+    expect(p).toContain('ДЖЕРЕЛА ДАНИХ: задачі/рішення/фінанси (Notion) — НЕ підключено');
+    expect(p).toContain('календар — НЕ підключено');
+    expect(p).toContain('НЕВІДОМО (Notion недоступний)');
+    expect(p).toContain('НІКОЛИ НЕ ВИГАДУЙ');
+    expect(p).toContain('Власниця — жінка (Ірина)');
+    expect(p.trim().endsWith('НАГАДУВАННЯ: до власниці — лише жіночий рід.')).toBe(true);
+  });
+
+  it('the recogniser echoing its own hint on silence is not treated as speech', async () => {
+    const { isPhantomTranscript } = await import('../src/lib/wake.js');
+    expect(isPhantomTranscript('Розмова українською з особистим асистентом Асистент.', 'Асистент')).toBe(true);
+    expect(isPhantomTranscript('Дякую за перегляд!', 'Аріна')).toBe(true);
+    expect(isPhantomTranscript('що в мене сьогодні?', 'Аріна')).toBe(false);
+  });
+});

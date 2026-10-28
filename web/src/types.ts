@@ -91,6 +91,7 @@ export interface Settings {
   timezone: string;
   assistantName: string;
   ownerName: string;
+  ownerGender: 'female' | 'male' | '';
   morningTime: string;
   eveningTime: string;
   voiceReplies: 'mirror' | 'always' | 'never';

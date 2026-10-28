@@ -24,9 +24,9 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     setError(null);
     try {
-      const { assistantName, ownerName, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
+      const { assistantName, ownerName, ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
       const eventsTopics = form.eventsTopics.map((t) => t.trim()).filter(Boolean);
-      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
+      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
       settings.setData(next);
       toast('Збережено');
     } catch (err) {
@@ -74,6 +74,14 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
               <label className="field">
                 Як він звертається до тебе
                 <input className="input" value={form.ownerName} maxLength={40} placeholder="напр. Ірино" onChange={(e) => set('ownerName', e.target.value)} />
+              </label>
+              <label className="field">
+                Рід звертання
+                <select className="select" value={form.ownerGender} onChange={(e) => set('ownerGender', e.target.value as Settings['ownerGender'])}>
+                  <option value="female">жіночий («ти заслужила»)</option>
+                  <option value="male">чоловічий («ти заслужив»)</option>
+                  <option value="">нейтрально</option>
+                </select>
               </label>
             </div>
           </section>
