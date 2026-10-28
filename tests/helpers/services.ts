@@ -55,6 +55,7 @@ export const testConfig = (): Config =>
     OPENAI_MODEL: 'm',
     OPENAI_TRANSCRIBE_MODEL: 'm',
     OPENAI_SEARCH_MODEL: 'm',
+    OPENAI_REASONING_EFFORT: 'low',
     OPENAI_VOICE_MODEL: 'fast',
     OPENAI_VOICE_TRANSCRIBE_MODEL: 'm',
     OPENAI_REALTIME_MODEL: 'gpt-realtime',

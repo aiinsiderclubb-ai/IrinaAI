@@ -111,7 +111,7 @@ await saveSnapshot(db, { platform: 'youtube', account: 'Demo Founder', takenAt: 
 const s: Services = {
   cfg, db, clock: () => new Date(), log, settings, tokens,
   pending: new PendingStore(db), messages: new MessageStore(db), memory: new MemoryStore(db),
-  llm: process.env.OPENAI_API_KEY ? new OpenAi(process.env.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }) : new DemoLlm(ZONE),
+  llm: process.env.OPENAI_API_KEY ? new OpenAi(process.env.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }, (process.env.OPENAI_REASONING_EFFORT as 'low') ?? 'low') : new DemoLlm(ZONE),
   notion: async () => repo,
   calendar,
   tts: cfg.ELEVENLABS_API_KEY

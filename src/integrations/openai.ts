@@ -15,12 +15,14 @@ export interface ToolCall {
 
 export type LlmMessage =
   | { role: 'system' | 'user'; content: string }
-  | { role: 'assistant'; content: string | null; toolCalls?: ToolCall[] }
+  /** `raw`: provider output items (reasoning + calls) to hand back verbatim on the next step */
+  | { role: 'assistant'; content: string | null; toolCalls?: ToolCall[]; raw?: unknown[] }
   | { role: 'tool'; toolCallId: string; content: string };
 
 export interface ChatResult {
   content: string | null;
   toolCalls: ToolCall[];
+  raw?: unknown[];
 }
 
 /** Everything the system needs from a language model: swapped for a fake in tests. */
@@ -49,13 +51,22 @@ export class OpenAi implements Llm {
   constructor(
     private apiKey: string,
     private models: { chat: string; transcribe: string; search: string },
+    /** reasoning effort for models that think (gpt-5.x, gpt-6.x, o-series) */
+    private reasoningEffort: 'minimal' | 'low' | 'medium' | 'high' = 'low',
   ) {}
+
+  /** Newer models do tools + reasoning only through the Responses API. */
+  static usesResponses(model: string): boolean {
+    return /^(gpt-5|gpt-6|o\d)/.test(model);
+  }
 
   private get headers() {
     return { authorization: `Bearer ${this.apiKey}` };
   }
 
   async chat(args: ChatArgs): Promise<ChatResult> {
+    const model = args.model ?? this.models.chat;
+    if (OpenAi.usesResponses(model)) return this.respond(model, args);
     const messages = args.messages.map((m) => {
       if (m.role === 'tool') return { role: 'tool', tool_call_id: m.toolCallId, content: m.content };
       if (m.role === 'assistant')
@@ -69,7 +80,7 @@ export class OpenAi implements Llm {
       return m;
     });
     const body = {
-      model: args.model ?? this.models.chat,
+      model,
       messages,
       temperature: args.temperature ?? 0.2,
       ...(args.maxTokens ? { max_tokens: args.maxTokens } : {}),
@@ -85,6 +96,75 @@ export class OpenAi implements Llm {
       content: msg?.content ?? null,
       toolCalls: (msg?.tool_calls ?? []).map((c: any) => ({ id: c.id, name: c.function.name, arguments: c.function.arguments })),
     };
+  }
+
+  /**
+   * Responses API (stateless: store=false). Reasoning items come back encrypted and are passed back on the
+   * next step together with the function calls, so the model keeps its chain of thought across tool rounds.
+   */
+  private async respond(model: string, args: ChatArgs): Promise<ChatResult> {
+    const instructions = args.messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+    const input: unknown[] = [];
+    for (const m of args.messages) {
+      if (m.role === 'system') continue;
+      if (m.role === 'user') input.push({ role: 'user', content: m.content });
+      else if (m.role === 'tool') input.push({ type: 'function_call_output', call_id: m.toolCallId, output: m.content });
+      else if (m.role !== 'assistant') continue;
+      else if (m.raw?.length) input.push(...m.raw);
+      else {
+        if (m.content) input.push({ role: 'assistant', content: m.content });
+        for (const c of m.toolCalls ?? []) input.push({ type: 'function_call', call_id: c.id, name: c.name, arguments: c.arguments });
+      }
+    }
+    const body = {
+      model,
+      instructions,
+      input,
+      store: false,
+      include: ['reasoning.encrypted_content'],
+      reasoning: { effort: this.reasoningEffort },
+      ...(args.maxTokens ? { max_output_tokens: Math.max(args.maxTokens, 800) } : {}),
+      ...(args.tools?.length ? { tools: args.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
+      ...(args.json ? { text: { format: { type: 'json_object' } } } : {}),
+    };
+    let output: any[];
+    if (args.onText) output = await this.respondStream(body, args.onText);
+    else output = (await httpJson<any>(`${BASE}/responses`, { method: 'POST', headers: this.headers, json: body, timeoutMs: 120_000 })).output ?? [];
+    const toolCalls = output.filter((o) => o.type === 'function_call').map((c) => ({ id: c.call_id, name: c.name, arguments: c.arguments ?? '{}' }));
+    const content = output
+      .filter((o) => o.type === 'message')
+      .flatMap((o) => (o.content ?? []).filter((c: any) => c.type === 'output_text').map((c: any) => c.text))
+      .join('');
+    // keep only what the next step needs: reasoning + calls (ids dropped: nothing is stored server-side)
+    const raw = toolCalls.length
+      ? output.filter((o) => o.type === 'reasoning' || o.type === 'function_call').map(({ id: _id, status: _st, ...rest }) => rest)
+      : undefined;
+    return { content: content || null, toolCalls, raw };
+  }
+
+  private async respondStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<any[]> {
+    const res = await http(`${BASE}/responses`, { method: 'POST', headers: this.headers, json: { ...body, stream: true }, timeoutMs: 120_000 });
+    if (!res.body) throw new Error('OpenAI: empty stream');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let output: any[] = [];
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line.startsWith('data:')) continue;
+        const ev = JSON.parse(line.slice(5).trim());
+        if (ev.type === 'response.output_text.delta' && ev.delta) onText(ev.delta);
+        else if (ev.type === 'response.completed') output = ev.response?.output ?? [];
+        else if (ev.type === 'response.failed' || ev.type === 'error') throw new Error(`OpenAI: ${ev.response?.error?.message ?? ev.message ?? 'stream failed'}`);
+      }
+    }
+    return output;
   }
 
   /** SSE streaming: text fragments go to `onText` immediately, tool calls are assembled from their deltas. */

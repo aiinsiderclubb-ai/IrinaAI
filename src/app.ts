@@ -46,7 +46,7 @@ export function createServices(cfg: Config, db: Db): Services {
     pending: new PendingStore(db),
     messages: new MessageStore(db),
     memory: new MemoryStore(db),
-    llm: new OpenAi(cfg.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }),
+    llm: new OpenAi(cfg.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }, cfg.OPENAI_REASONING_EFFORT),
     async notion() {
       if (!notionApi) throw new NotConnected('Notion не підключено (NOTION_TOKEN)');
       const st = await settings.get();

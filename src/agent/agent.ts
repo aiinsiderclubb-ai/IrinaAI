@@ -170,7 +170,7 @@ export class Agent {
         text = (res.content ?? '').trim();
         break;
       }
-      messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls });
+      messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls, raw: res.raw });
       for (const call of res.toolCalls) {
         messages.push({ role: 'tool', toolCallId: call.id, content: await this.runTool(call.name, call.arguments, ctx) });
       }
