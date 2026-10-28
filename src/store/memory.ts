@@ -1,6 +1,7 @@
 import type { Db } from '../db/index.js';
 
-export type MemoryKind = 'person' | 'preference' | 'fact';
+/** digest = automatic summary of one day of conversation */
+export type MemoryKind = 'person' | 'preference' | 'fact' | 'digest';
 
 export interface Memory {
   id: number;

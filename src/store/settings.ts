@@ -33,6 +33,8 @@ export interface Settings {
   /** 1 = Monday ... 7 = Sunday */
   eventsWeekday: number;
   eventsTime: string;
+  /** owner's Notion pages read into the prompt (read-only), e.g. «Управлінський центр» */
+  notionContextPages: string[];
   notion?: NotionSchema;
 }
 
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   eventsGeo: '',
   eventsWeekday: 1,
   eventsTime: '09:00',
+  notionContextPages: [],
 });
 
 export class SettingsStore {

@@ -65,6 +65,7 @@ export const testConfig = (): Config =>
     ELEVENLABS_MODEL: 'm',
     ELEVENLABS_MODEL_FAST: 'm-fast',
     NOTION_VERSION: '2022-06-28',
+    OPENAI_DIGEST_MODEL: 'digest-model',
     KEEPALIVE_MINUTES: 0,
   }) as Config;
 

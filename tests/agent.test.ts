@@ -191,7 +191,10 @@ describe('agent loop safety', () => {
     await agent.handle(42, 'ще раз');
     const second = env.llm.calls[1]!.messages;
     expect(second[0]).toMatchObject({ role: 'system' });
-    expect(JSON.stringify(second[0])).toMatch(/2026-10-23[\s\S]*Alpha, Beta/);
+    const prompt = JSON.stringify(second[0]);
+    // stable part (projects) first for prompt caching, time-dependent part (date) last
+    expect(prompt.indexOf('Alpha, Beta')).toBeGreaterThan(0);
+    expect(prompt.indexOf('2026-10-23')).toBeGreaterThan(prompt.indexOf('Alpha, Beta'));
     expect(second.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
   });
 });

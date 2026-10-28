@@ -46,6 +46,10 @@ const schema = z.object({
 
   NOTION_TOKEN: opt(z.string()),
   NOTION_VERSION: z.string().default('2022-06-28'),
+  /** comma-separated page ids read into the prompt (read-only), e.g. the owner's «Управлінський центр» */
+  NOTION_CONTEXT_PAGES: opt(z.string()),
+  /** cheap model for background summaries (daily conversation digest) */
+  OPENAI_DIGEST_MODEL: z.string().default('gpt-4.1-mini'),
 
   GOOGLE_CLIENT_ID: opt(z.string()),
   GOOGLE_CLIENT_SECRET: opt(z.string()),

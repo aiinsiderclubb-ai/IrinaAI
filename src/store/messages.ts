@@ -23,6 +23,14 @@ export class MessageStore {
     return rows.reverse();
   }
 
+  async between(chatId: number, fromIso: string, toIso: string): Promise<ChatMessage[]> {
+    const { rows } = await this.db.query<ChatMessage>(
+      'SELECT role, content FROM messages WHERE chat_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY id',
+      [chatId, fromIso, toIso],
+    );
+    return rows;
+  }
+
   /** Data minimisation: drop old chat history. */
   async prune(olderThanDays = 30): Promise<void> {
     await this.db.query(`DELETE FROM messages WHERE created_at < now() - ($1 || ' days')::interval`, [String(olderThanDays)]);

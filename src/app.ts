@@ -54,6 +54,7 @@ export function createServices(cfg: Config, db: Db): Services {
       if (cached?.schema !== st.notion) cached = { schema: st.notion, repo: new NotionRepo(notionApi, st.notion) };
       return cached.repo;
     },
+    notionApi,
     googleAuth,
     calendar: googleAuth ? new GoogleCalendar(googleAuth) : undefined,
     youtube: googleAuth ? new YouTubeClient(googleAuth, clock) : undefined,

@@ -16,7 +16,8 @@
     "test:pg": "TEST_DATABASE_URL=postgres://postgres:pw@localhost:55432/aia vitest run tests/postgres.test.ts",
     "dev:web": "vite --config web/vite.config.ts",
     "demo": "tsx src/scripts/demo.ts",
-    "pair": "tsx src/scripts/pair.ts"
+    "pair": "tsx src/scripts/pair.ts",
+    "eval": "tsx src/scripts/eval.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",

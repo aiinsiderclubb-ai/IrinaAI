@@ -9,6 +9,7 @@ import type { Tts } from './integrations/tts.js';
 import type { YouTubeClient } from './integrations/youtube.js';
 import type { Logger } from './lib/log.js';
 import type { Clock } from './lib/time.js';
+import type { NotionApi } from './notion/client.js';
 import type { NotionRepo } from './notion/repo.js';
 import type { MemoryStore } from './store/memory.js';
 import type { MessageStore } from './store/messages.js';
@@ -31,6 +32,8 @@ export interface Services {
   memory: MemoryStore;
   llm: Llm;
   notion(): Promise<NotionRepo>;
+  /** raw Notion API (read-only uses such as the owner context), present when NOTION_TOKEN is set */
+  notionApi?: NotionApi;
   calendar?: CalendarPort;
   googleAuth?: GoogleAuth;
   instagram?: InstagramClient;

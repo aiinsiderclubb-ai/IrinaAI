@@ -6,6 +6,7 @@ import { errMsg } from './lib/log.js';
 import { atTime } from './lib/time.js';
 import { formatEvents, searchEvents } from './modules/events.js';
 import { runNudges } from './modules/nudges.js';
+import { digestDay } from './modules/digest.js';
 import { buildEveningReport, buildMorningReport } from './modules/reports.js';
 import { saveSnapshot } from './modules/social.js';
 import { connectedAccounts, esc, type Services } from './services.js';
@@ -144,6 +145,14 @@ export function buildJobs(): Job[] {
       },
     },
     {
+      name: 'conversation_digest',
+      due: daily(() => '03:30', 6),
+      run: async (s) => {
+        const st = await s.settings.get();
+        await digestDay(s, DateTime.fromJSDate(s.clock(), { zone: st.timezone }).minus({ days: 1 }).toISODate()!);
+      },
+    },
+    {
       name: 'housekeeping',
       due: daily(() => '05:00', 6),
       run: async (s) => {
@@ -151,6 +160,7 @@ export function buildJobs(): Job[] {
         await s.pending.expireOlderThan(48);
         await s.db.query(`DELETE FROM job_runs WHERE updated_at < now() - interval '14 days'`);
         await s.db.query(`DELETE FROM nudges WHERE created_at < now() - interval '30 days'`);
+        await s.db.query(`DELETE FROM memories WHERE kind = 'digest' AND updated_at < now() - interval '60 days'`);
       },
     },
   ];

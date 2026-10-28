@@ -38,6 +38,16 @@ export interface ChatArgs {
   onText?: (delta: string) => void;
 }
 
+/** Token usage per model, accumulated by the client (for the eval report and cost estimates). */
+export interface UsageRow {
+  calls: number;
+  input: number;
+  cachedInput: number;
+  output: number;
+  reasoning: number;
+  ms: number;
+}
+
 export interface Llm {
   chat(args: ChatArgs): Promise<ChatResult>;
   /** `prompt` biases recognition (names, short answers like «так») */
@@ -54,6 +64,21 @@ export class OpenAi implements Llm {
     /** reasoning effort for models that think (gpt-5.x, gpt-6.x, o-series) */
     private reasoningEffort: 'minimal' | 'low' | 'medium' | 'high' = 'low',
   ) {}
+
+  readonly usage = new Map<string, UsageRow>();
+
+  private track(model: string, u: any, ms: number): void {
+    const row = this.usage.get(model) ?? { calls: 0, input: 0, cachedInput: 0, output: 0, reasoning: 0, ms: 0 };
+    row.calls++;
+    row.ms += ms;
+    if (u) {
+      row.input += u.input_tokens ?? u.prompt_tokens ?? 0;
+      row.cachedInput += u.input_tokens_details?.cached_tokens ?? u.prompt_tokens_details?.cached_tokens ?? 0;
+      row.output += u.output_tokens ?? u.completion_tokens ?? 0;
+      row.reasoning += u.output_tokens_details?.reasoning_tokens ?? u.completion_tokens_details?.reasoning_tokens ?? 0;
+    }
+    this.usage.set(model, row);
+  }
 
   /** Newer models do tools + reasoning only through the Responses API. */
   static usesResponses(model: string): boolean {
@@ -89,8 +114,14 @@ export class OpenAi implements Llm {
         : {}),
       ...(args.json ? { response_format: { type: 'json_object' } } : {}),
     };
-    if (args.onText) return this.chatStream(body, args.onText);
+    const t0 = Date.now();
+    if (args.onText) {
+      const r = await this.chatStream(body, args.onText);
+      this.track(model, r.usage, Date.now() - t0);
+      return r;
+    }
     const res = await httpJson<any>(`${BASE}/chat/completions`, { method: 'POST', headers: this.headers, json: body, timeoutMs: 90_000 });
+    this.track(model, res.usage, Date.now() - t0);
     const msg = res.choices?.[0]?.message;
     return {
       content: msg?.content ?? null,
@@ -127,9 +158,16 @@ export class OpenAi implements Llm {
       ...(args.tools?.length ? { tools: args.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
       ...(args.json ? { text: { format: { type: 'json_object' } } } : {}),
     };
+    const t0 = Date.now();
     let output: any[];
-    if (args.onText) output = await this.respondStream(body, args.onText);
-    else output = (await httpJson<any>(`${BASE}/responses`, { method: 'POST', headers: this.headers, json: body, timeoutMs: 120_000 })).output ?? [];
+    let usage: unknown;
+    if (args.onText) ({ output, usage } = await this.respondStream(body, args.onText));
+    else {
+      const r = await httpJson<any>(`${BASE}/responses`, { method: 'POST', headers: this.headers, json: body, timeoutMs: 120_000 });
+      output = r.output ?? [];
+      usage = r.usage;
+    }
+    this.track(model, usage, Date.now() - t0);
     const toolCalls = output.filter((o) => o.type === 'function_call').map((c) => ({ id: c.call_id, name: c.name, arguments: c.arguments ?? '{}' }));
     const content = output
       .filter((o) => o.type === 'message')
@@ -142,13 +180,14 @@ export class OpenAi implements Llm {
     return { content: content || null, toolCalls, raw };
   }
 
-  private async respondStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<any[]> {
+  private async respondStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<{ output: any[]; usage: unknown }> {
     const res = await http(`${BASE}/responses`, { method: 'POST', headers: this.headers, json: { ...body, stream: true }, timeoutMs: 120_000 });
     if (!res.body) throw new Error('OpenAI: empty stream');
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
     let output: any[] = [];
+    let usage: unknown;
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -160,16 +199,20 @@ export class OpenAi implements Llm {
         if (!line.startsWith('data:')) continue;
         const ev = JSON.parse(line.slice(5).trim());
         if (ev.type === 'response.output_text.delta' && ev.delta) onText(ev.delta);
-        else if (ev.type === 'response.completed') output = ev.response?.output ?? [];
+        else if (ev.type === 'response.completed') {
+          output = ev.response?.output ?? [];
+          usage = ev.response?.usage;
+        }
         else if (ev.type === 'response.failed' || ev.type === 'error') throw new Error(`OpenAI: ${ev.response?.error?.message ?? ev.message ?? 'stream failed'}`);
       }
     }
-    return output;
+    return { output, usage };
   }
 
   /** SSE streaming: text fragments go to `onText` immediately, tool calls are assembled from their deltas. */
-  private async chatStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<ChatResult> {
-    const res = await http(`${BASE}/chat/completions`, { method: 'POST', headers: this.headers, json: { ...body, stream: true }, timeoutMs: 90_000 });
+  private async chatStream(body: Record<string, unknown>, onText: (delta: string) => void): Promise<ChatResult & { usage?: unknown }> {
+    const res = await http(`${BASE}/chat/completions`, { method: 'POST', headers: this.headers, json: { ...body, stream: true, stream_options: { include_usage: true } }, timeoutMs: 90_000 });
+    let usage: unknown;
     if (!res.body) throw new Error('OpenAI: empty stream');
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -187,7 +230,9 @@ export class OpenAi implements Llm {
         if (!line.startsWith('data:')) continue;
         const data = line.slice(5).trim();
         if (data === '[DONE]') continue;
-        const delta = JSON.parse(data).choices?.[0]?.delta;
+        const parsed = JSON.parse(data);
+        if (parsed.usage) usage = parsed.usage;
+        const delta = parsed.choices?.[0]?.delta;
         if (!delta) continue;
         if (typeof delta.content === 'string' && delta.content) {
           content += delta.content;
@@ -201,7 +246,7 @@ export class OpenAi implements Llm {
         }
       }
     }
-    return { content: content || null, toolCalls: calls.filter(Boolean) };
+    return { content: content || null, toolCalls: calls.filter(Boolean), usage };
   }
 
   async transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string, model?: string): Promise<string> {
