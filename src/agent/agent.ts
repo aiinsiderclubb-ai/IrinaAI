@@ -6,7 +6,7 @@ import type { Services } from '../services.js';
 import { buildToday } from '../modules/dashboard.js';
 import { readPagesText } from '../notion/context.js';
 import { ELEVEN_VOICES, ElevenLabs, OPENAI_VOICES } from '../integrations/tts.js';
-import { buildTools, toolSpecs, type Tool, type ToolContext } from './tools.js';
+import { buildTools, customTools, toolSpecs, type Tool, type ToolContext } from './tools.js';
 
 const MAX_STEPS = 6;
 
@@ -187,7 +187,9 @@ export class Agent {
       { role: 'user', content: userText },
     ];
     const ctx: ToolContext = { s, chatId, proposals: [], lastUserText: this.mode === 'voice' ? userText : undefined };
-    const specs = toolSpecs(this.tools);
+    // tools connected in the cabinet (webhooks, MCP) are picked up on every turn
+    const tools = [...this.tools, ...(await customTools(s))];
+    const specs = toolSpecs(tools);
 
     let text = '';
     for (let step = 0; step < MAX_STEPS; step++) {
@@ -199,7 +201,7 @@ export class Agent {
       }
       messages.push({ role: 'assistant', content: res.content, toolCalls: res.toolCalls, raw: res.raw });
       for (const call of res.toolCalls) {
-        messages.push({ role: 'tool', toolCallId: call.id, content: await this.runTool(call.name, call.arguments, ctx) });
+        messages.push({ role: 'tool', toolCallId: call.id, content: await runToolCall(tools, call.name, call.arguments, ctx) });
       }
       if (step === MAX_STEPS - 1) text = 'Не вдалося завершити запит за кілька кроків. Спробуйте сформулювати простіше.';
     }

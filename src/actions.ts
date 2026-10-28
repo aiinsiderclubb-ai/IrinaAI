@@ -2,6 +2,8 @@ import { DateTime } from 'luxon';
 import type { Account } from './integrations/google-calendar.js';
 import { errMsg } from './lib/log.js';
 import { NotConnected, type Services } from './services.js';
+import { callWebhook, mcpCallTool } from './integrations/mcp.js';
+import { notionWritable } from './integrations/runtime.js';
 
 /**
  * Everything that changes the owner's data runs here, and only after the owner pressed "Підтвердити"
@@ -18,6 +20,8 @@ export interface ActionPayloads {
   'calendar.create': { account: Account; title: string; start: string; end: string; description?: string; location?: string };
   'plan.apply': { account: Account; blocks: Array<{ taskId: string; title: string; start: string; end: string }> };
   'finance.record': { date: string; amount: number; currency: string; kind: 'expense' | 'income'; category: string; scope: 'personal' | 'project'; project?: string; note: string };
+  'custom.webhook': { integrationId: string; params: Record<string, unknown>; label: string };
+  'custom.mcp': { integrationId: string; tool: string; args: Record<string, unknown>; label: string };
   'note.save': { title: string; project?: string; source: string; text: string; file?: { fileId: string; name: string; mime: string } };
 }
 
@@ -106,6 +110,20 @@ export const EXECUTORS: Executors = {
     return `Записано: ${e.kind === 'expense' ? '−' : '+'}${e.amount} ${e.currency}, ${e.category}${e.project ? `, ${e.project}` : ', особисте'}.`;
   },
 
+  async 'custom.webhook'(s, p) {
+    const c = (await s.integrations?.get())?.custom?.find((x) => x.id === p.integrationId);
+    if (!c || c.type !== 'webhook' || !c.enabled) throw new Error(`Інтеграцію «${p.label}» вимкнено або видалено`);
+    const reply = await callWebhook(c.url, c.secret, c.name, p.params);
+    return `Виконано «${c.name}». ${reply.slice(0, 300)}`;
+  },
+
+  async 'custom.mcp'(s, p) {
+    const c = (await s.integrations?.get())?.custom?.find((x) => x.id === p.integrationId);
+    if (!c || c.type !== 'mcp' || !c.enabled) throw new Error(`Інтеграцію «${p.label}» вимкнено або видалено`);
+    const reply = await mcpCallTool(c.url, c.authorization, p.tool, p.args);
+    return `Виконано ${p.label}. ${reply.slice(0, 300)}`;
+  },
+
   async 'note.save'(s, p) {
     const notion = await s.notion();
     let file: { data: Uint8Array; name: string; mime: string } | undefined;
@@ -131,6 +149,11 @@ export async function runPending(s: Services, id: string): Promise<{ ok: boolean
   const action = await s.pending.claim(id);
   if (!action) return { ok: false, text: 'Цю дію вже оброблено або вона застаріла.', claimed: false };
   const exec = EXECUTORS[action.kind as ActionKind] as ((s: Services, p: unknown) => Promise<string>) | undefined;
+  const touchesNotion = !action.kind.startsWith('calendar.') && !action.kind.startsWith('plan.') && !action.kind.startsWith('custom.');
+  if (touchesNotion && !(await notionWritable(s))) {
+    await s.pending.finish(id, 'failed', 'Notion read-only');
+    return { ok: false, text: 'Notion підключено лише на читання — запис вимкнено в налаштуваннях.', claimed: true };
+  }
   if (!exec) {
     await s.pending.finish(id, 'failed', 'unknown kind');
     return { ok: false, text: `Невідомий тип дії: ${action.kind}`, claimed: true };

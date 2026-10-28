@@ -31,6 +31,7 @@ export const api = {
   get: <T>(url: string) => call<T>('GET', url),
   post: <T>(url: string, body: unknown = {}) => call<T>('POST', url, body),
   patch: <T>(url: string, body: unknown) => call<T>('PATCH', url, body),
+  put: <T>(url: string, body: unknown) => call<T>('PUT', url, body),
   del: <T>(url: string) => call<T>('DELETE', url),
   upload: <T>(url: string, blob: Blob) => call<T>('POST', url, undefined, { body: blob, type: blob.type || 'audio/webm' }),
 };

@@ -102,6 +102,22 @@ npm run demo & npm run dev:web    # hot reload on http://localhost:5173
 The demo runs on in-memory Postgres with a fake Notion and calendar filled with sample data. Without `OPENAI_API_KEY` the
 "model" is a keyword stub (plan day, add task, "мінус 20 доларів таксі", spending this month); with the key the real agent runs on the fake data.
 
+## Connections from the cabinet (Опції → Підключення)
+
+Everything can be configured without touching Render: keys are stored in Postgres encrypted with `ENCRYPTION_KEY`,
+shown masked, and applied immediately (`src/integrations/runtime.ts`); env vars remain a fallback.
+
+* **Notion** — wizard: integration token → list what the integration can see → pick the existing tasks database and up to
+  5 context pages → preview of how the assistant understood the structure. **Read-only by default**: no card that would
+  write to Notion is prepared and the executor refuses Notion writes until "Дозволити запис у Notion" is switched on.
+* **Google** (Calendar + YouTube) and **Instagram**: OAuth client keys + redirect URI to copy + connect buttons.
+* **ElevenLabs**, **OpenAI**: keys verified with a read-only call before saving.
+* **Other integrations** the owner adds herself:
+  * *Actions via webhook* (Make / Zapier / n8n): name, description, https URL, optional secret (`X-Assistant-Secret`),
+    parameters. Each becomes an agent tool; every call is a confirmation card, then `POST {action, params}`.
+  * *MCP servers* (Streamable HTTP): tools are listed on connect; each can be enabled and marked "з підтвердженням"
+    (default) or run directly (reads). Minimal client in `src/integrations/mcp.ts`.
+
 ## Local development
 
 ```bash

@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { runPending, type ActionKind, type ActionPayloads } from '../actions.js';
+import { notionWritable } from '../integrations/runtime.js';
+import { mcpCallTool } from '../integrations/mcp.js';
 import { findConflicts } from '../calendar/logic.js';
 import type { Account } from '../integrations/google-calendar.js';
 import type { ToolSpec } from '../integrations/openai.js';
@@ -29,12 +31,23 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
   /** true = only creates a pending action; the real change happens after confirmation */
   proposes: boolean;
   run(args: z.infer<T>, ctx: ToolContext): Promise<unknown>;
+  /** ready JSON Schema for tools defined outside the code (MCP, webhooks); takes precedence over `schema` */
+  jsonSchema?: Record<string, unknown>;
 }
 
 const date = z.string().describe('Дата YYYY-MM-DD');
 const dateTime = z.string().describe('Локальний час YYYY-MM-DDTHH:mm (часовий пояс власника) або дата YYYY-MM-DD');
 
+const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save']);
+
 async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
+  if (NOTION_KINDS.has(kind) && !(await notionWritable(ctx.s))) {
+    return {
+      status: 'read_only',
+      note: 'Notion підключено лише на читання (так домовились із власником). Нічого не записуй; скажи, що саме записав би, і що запис можна увімкнути в Опції → Підключення → Notion.',
+      would_do: summary,
+    };
+  }
   const p = await ctx.s.pending.create(kind, payload, summary, ctx.chatId);
   ctx.proposals.push(p);
   return {
@@ -538,7 +551,62 @@ export function buildVoiceTools(): Tool[] {
 
 export function toolSpecs(tools: Tool[]): ToolSpec[] {
   return tools.map((t) => {
-    const { $schema: _s, ...parameters } = z.toJSONSchema(t.schema, { target: 'draft-7' }) as Record<string, unknown>;
+    const { $schema: _s, ...parameters } = (t.jsonSchema ?? z.toJSONSchema(t.schema, { target: 'draft-7' })) as Record<string, unknown>;
     return { name: t.name, description: t.description, parameters };
   });
+}
+
+const slug = (v: string) =>
+  v
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24) || 'x';
+
+/**
+ * Tools the owner connected from the cabinet: webhook actions (always confirmed) and MCP server tools
+ * (read tools run directly, the ones marked «з підтвердженням» become cards).
+ */
+export async function customTools(s: Services): Promise<Tool[]> {
+  const ic = (await s.integrations?.get()) ?? {};
+  const out: Tool[] = [];
+  const anyArgs = z.record(z.string(), z.unknown());
+  for (const c of ic.custom ?? []) {
+    if (!c.enabled) continue;
+    if (c.type === 'webhook') {
+      const properties = Object.fromEntries(c.params.map((p) => [p.name, { type: 'string', description: p.description }]));
+      out.push({
+        name: `ext_${slug(c.name)}`.slice(0, 60),
+        description: `${c.description} (підключена дія «${c.name}»; виконується після підтвердження)`,
+        schema: anyArgs,
+        jsonSchema: { type: 'object', properties, required: c.params.filter((p) => p.required).map((p) => p.name) },
+        proposes: true,
+        async run(raw, ctx) {
+          const args = raw as Record<string, unknown>;
+          const shown = Object.entries(args).map(([k, v]) => `${k}: ${String(v).slice(0, 80)}`).join('; ');
+          return propose(ctx, 'custom.webhook', { integrationId: c.id, params: args, label: c.name }, `«${c.name}»${shown ? ` — ${shown}` : ''}`);
+        },
+      });
+    } else {
+      for (const t of c.tools) {
+        if (!t.enabled) continue;
+        out.push({
+          name: `mcp_${slug(c.name)}_${slug(t.name)}`.slice(0, 64),
+          description: `[${c.name}] ${t.description}${t.confirm ? ' (виконується після підтвердження)' : ''}`,
+          schema: anyArgs,
+          jsonSchema: { type: 'object', properties: {}, ...t.inputSchema },
+          proposes: t.confirm,
+          async run(raw, ctx) {
+            const args = raw as Record<string, unknown>;
+            if (t.confirm) {
+              const shown = Object.entries(args).map(([k, v]) => `${k}: ${JSON.stringify(v).slice(0, 80)}`).join('; ');
+              return propose(ctx, 'custom.mcp', { integrationId: c.id, tool: t.name, args, label: `${c.name}: ${t.name}` }, `${c.name} → ${t.name}${shown ? ` (${shown})` : ''}`);
+            }
+            return { result: await mcpCallTool(c.url, c.authorization, t.name, args) };
+          },
+        });
+      }
+    }
+  }
+  return out;
 }

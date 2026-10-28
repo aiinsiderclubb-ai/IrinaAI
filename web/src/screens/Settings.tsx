@@ -1,21 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
-import type { IntegrationState, Memory, Settings, Status } from '../types';
+import type { Memory, Settings } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
+import { Connections } from './Connections';
 
-const STATE_LABEL: Record<IntegrationState, string> = { on: 'підключено', off: 'не підключено', broken: 'потрібно перепідключити', setup: 'потрібне налаштування' };
-const INTEGRATIONS: Array<{ key: keyof Status['integrations']; name: string; hint: string }> = [
-  { key: 'notion', name: 'Notion', hint: 'Задачі, рішення, фінанси, матеріали' },
-  { key: 'work', name: 'Google Calendar — робочий', hint: 'Розклад і конфлікти' },
-  { key: 'personal', name: 'Google Calendar — особистий', hint: 'Синхронізується з робочим' },
-  { key: 'youtube', name: 'YouTube', hint: 'Лише читання статистики' },
-  { key: 'instagram', name: 'Instagram', hint: 'Business / Creator, лише читання' },
-  { key: 'voice', name: 'Голос', hint: 'Голосові відповіді (ElevenLabs або OpenAI)' },
-];
 const WEEKDAYS = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
 
 export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
-  const status = useLoad<Status>('/api/status');
   const settings = useLoad<Settings>('/api/settings');
   const memories = useLoad<{ items: Memory[] }>('/api/memories');
   const [form, setForm] = useState<Settings | null>(null);
@@ -65,37 +56,7 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
         </button>
       </div>
 
-      <section className="card">
-        <div className="card-head">
-          <h2>Підключення</h2>
-        </div>
-        {status.loading && !status.data && <Loading />}
-        <ErrorNote text={status.error} />
-        {status.data && (
-          <ul className="list integr">
-            {INTEGRATIONS.map(({ key, name, hint }) => {
-              const it = status.data!.integrations[key];
-              return (
-                <li key={key}>
-                  <div className="grow">
-                    <div className="title">{name}</div>
-                    <div className="meta">
-                      <span>{hint}</span>
-                      {it.expiresAt && <span>токен до {new Date(it.expiresAt).toLocaleDateString('uk-UA')}</span>}
-                    </div>
-                  </div>
-                  <span className={`pill pill-${it.state}`}>{STATE_LABEL[it.state]}</span>
-                  {it.connectUrl && (
-                    <a className="btn btn-sm" href={it.connectUrl} target="_blank" rel="noreferrer">
-                      {it.state === 'on' ? 'Перепідключити' : 'Підключити'}
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      <Connections />
 
       {!form ? (
         <Loading />

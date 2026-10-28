@@ -16,7 +16,7 @@ const db = createPgDb(cfg.DATABASE_URL);
 const applied = await migrate(db);
 if (applied.length) log.info('migrations_applied', { applied });
 
-const services = createServices(cfg, db);
+const services = await createServices(cfg, db);
 const agent = new Agent(services);
 const bot = createBot(services, agent);
 await bot.init();

@@ -24,6 +24,7 @@ import type { SocialData } from '../integrations/social-types.js';
 import type { Services } from '../services.js';
 import type { PendingAction } from '../store/pending.js';
 import { registerRealtime, type SecretFactory } from './realtime.js';
+import { registerIntegrations } from './integrations-api.js';
 import { OrderedSpeech, SentenceSplitter } from './speech-stream.js';
 import { AttemptLimiter, consumeLoginToken, isValidSession, issueSession, passwordMatches, SESSION_COOKIE, SESSION_DAYS } from './auth.js';
 
@@ -387,6 +388,7 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   });
 
   registerRealtime(app, s, opts.realtimeSecret);
+  if (s.integrations) registerIntegrations(app, s);
 
   /** Voice picker: catalogue + a sample in the chosen voice/style (not saved). */
   const provider = () => (s.tts instanceof ElevenLabs ? 'elevenlabs' : s.tts instanceof OpenAiTts ? 'openai' : s.tts ? 'other' : 'none');
