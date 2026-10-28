@@ -51,6 +51,9 @@ const schema = z.object({
   META_APP_ID: opt(z.string()),
   META_APP_SECRET: opt(z.string()),
 
+  /** Render free instances sleep after 15 min without traffic: ping our own /health this often (0 = off) */
+  KEEPALIVE_MINUTES: z.coerce.number().int().min(0).default(0),
+
   /** optional second way into the web UI besides the one-time link from the bot (/web) */
   WEB_PASSWORD: opt(z.string().min(10)),
 });

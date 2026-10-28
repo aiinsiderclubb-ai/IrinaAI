@@ -39,9 +39,20 @@ if (cfg.TELEGRAM_MODE === 'webhook') {
 
 const stopScheduler = startScheduler(services);
 
+// keep a free Render instance awake: inbound traffic through the public URL counts, localhost does not
+let keepalive: NodeJS.Timeout | undefined;
+if (cfg.KEEPALIVE_MINUTES > 0 && cfg.PUBLIC_URL) {
+  const url = `${cfg.PUBLIC_URL.replace(/\/$/, '')}/health`;
+  keepalive = setInterval(() => {
+    fetch(url, { signal: AbortSignal.timeout(20_000) }).catch((e) => log.warn('keepalive_failed', { error: String(e).slice(0, 120) }));
+  }, cfg.KEEPALIVE_MINUTES * 60_000);
+  log.info('keepalive_on', { minutes: cfg.KEEPALIVE_MINUTES });
+}
+
 async function shutdown(signal: string) {
   log.info('shutdown', { signal });
   stopScheduler();
+  clearInterval(keepalive);
   await bot.stop().catch(() => {});
   await server.close();
   await db.close();
