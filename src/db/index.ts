@@ -1,5 +1,4 @@
 import pg from 'pg';
-import { PGlite } from '@electric-sql/pglite';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +22,8 @@ export function createPgDb(connectionString: string): Db {
 
 /** In-process Postgres (WASM) for tests and local dev without a server. */
 export async function createPgliteDb(): Promise<Db> {
+  // dev dependency: loaded only by tests and the demo, never in the production image
+  const { PGlite } = await import('@electric-sql/pglite');
   const lite = new PGlite();
   await lite.waitReady;
   return {
