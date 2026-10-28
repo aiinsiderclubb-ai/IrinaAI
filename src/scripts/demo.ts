@@ -41,7 +41,8 @@ const PROJECTS = ['Запуск продукту', 'Інвестори', 'Ком
 // real Telegram bot in the demo once a token and the paired owner id are in .env (npm run pair)
 const tgToken = process.env.TELEGRAM_BOT_TOKEN;
 const tgOwner = Number(process.env.OWNER_TELEGRAM_ID ?? 0);
-const telegram = Boolean(tgToken && tgOwner);
+// production (Render) owns the bot via webhook: the demo takes it over only when asked (DEMO_TELEGRAM=1)
+const telegram = Boolean(tgToken && tgOwner && process.env.DEMO_TELEGRAM === '1');
 
 const cfg = {
   NODE_ENV: 'development', PORT, DATABASE_URL: 'pglite', ENCRYPTION_KEY: randomBytes(32).toString('base64'), APP_SECRET: randomBytes(32).toString('hex'),
@@ -140,5 +141,5 @@ console.log(`
   Open:      http://localhost:${PORT}/#/login?token=${token}
   Password:  ${cfg.WEB_PASSWORD}
   (with Vite dev server use port 5173 instead of ${PORT})
-  Telegram:  ${telegram ? 'on (polling)' : tgToken ? 'token set, run `npm run pair` to link your account' : 'off (no TELEGRAM_BOT_TOKEN)'}
+  Telegram:  ${telegram ? 'on (polling)' : tgToken ? (tgOwner ? 'off (DEMO_TELEGRAM=1 to take the bot over from Render)' : 'token set, run `npm run pair` to link your account') : 'off (no TELEGRAM_BOT_TOKEN)'}
 `);

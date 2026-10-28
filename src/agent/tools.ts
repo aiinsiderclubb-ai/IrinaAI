@@ -368,7 +368,7 @@ export function buildTools(): Tool[] {
     schema: z.object({
       from: date.optional().describe('за замовчуванням — 1-ше число поточного місяця'),
       to: date.optional().describe('за замовчуванням — сьогодні'),
-      scope: z.enum(['personal', 'project']).optional(),
+      scope: z.enum(['personal', 'project']).optional().describe('лише якщо власник явно питає про особисте або лише про проєкти; «загальні», «всього», «скільки витратив» — без scope'),
       project: z.string().optional(),
     }),
     proposes: false,
