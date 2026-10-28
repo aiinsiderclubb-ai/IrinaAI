@@ -8,6 +8,8 @@ const schema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().int().default(3000),
   PUBLIC_URL: opt(z.string().url()),
+  /** where the owner opens the web cabinet when it is served elsewhere (e.g. Vercel proxying /api here) */
+  WEB_URL: opt(z.string().url()),
   DATABASE_URL: z.string().min(1),
   /** base64, 32 bytes: `openssl rand -base64 32` */
   ENCRYPTION_KEY: z.string().min(1),
@@ -77,6 +79,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('TELEGRAM_MODE=webhook requires PUBLIC_URL and TELEGRAM_WEBHOOK_SECRET');
   }
   return cfg;
+}
+
+/** Address of the web cabinet for links sent to the owner (/web login link). */
+export function webUrl(cfg: Config): string {
+  return (cfg.WEB_URL ?? baseUrl(cfg)).replace(/\/$/, '');
 }
 
 /** Where the owner opens the web UI and OAuth returns to. */

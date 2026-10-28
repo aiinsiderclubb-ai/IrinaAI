@@ -2,7 +2,7 @@ import { Bot, InlineKeyboard, InputFile, type Context } from 'grammy';
 import { DateTime } from 'luxon';
 import { runPending } from '../actions.js';
 import type { Agent, AgentReply } from '../agent/agent.js';
-import { baseUrl } from '../config.js';
+import { webUrl } from '../config.js';
 import { signState } from '../lib/crypto.js';
 import { transcriptionHint } from '../lib/wake.js';
 import { createLoginToken } from '../web/auth.js';
@@ -166,7 +166,7 @@ export function createBot(s: Services, agent: Agent): Bot {
   bot.command('web', async (ctx) => {
     const token = await createLoginToken(s.db);
     // token in the URL fragment: never sent to the server or to Telegram's link previewer
-    const url = `${baseUrl(cfg)}/#/login?token=${token}`;
+    const url = `${webUrl(cfg)}/#/login?token=${token}`;
     await ctx.reply(`Вхід у веб-кабінет (одноразове посилання, 10 хв):\n${url}`, { link_preview_options: { is_disabled: true } });
   });
 
