@@ -1,0 +1,67 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-cyr.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-lat.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #04090D; }
+    #s4-corewrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 960px 540px; }
+    #s4-core { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; -webkit-mask-image: radial-gradient(closest-side, #000 78%, transparent 100%); mask-image: radial-gradient(closest-side, #000 78%, transparent 100%); }
+    #s4-said { position: absolute; left: 860px; top: 150px; width: 940px; font-weight: 400; font-size: 58px; line-height: 1.18; letter-spacing: -0.015em; color: #E6F6FA; }
+    #s4-said span { display: inline-block; }
+    #s4-said .q { color: rgb(200 230 240 / 0.5); }
+    /* the cabinet's own confirmation card, rebuilt 2.4x */
+    #s4-card { position: absolute; left: 860px; top: 520px; width: 940px; height: 330px; border: 2px solid rgb(120 220 255 / 0.12); background: #0A1A22; border-radius: 24px; padding: 32px 38px 34px 43px; transform-origin: 0% 50%; overflow: hidden; }
+    #s4-edge, #s4-edge-ok { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #ffb36b; }
+    #s4-edge-ok { background: #7fe3a8; opacity: 0; }
+    #s4-label { font: 500 28px 'JetBrains Mono', monospace; color: rgb(200 230 240 / 0.55); text-transform: uppercase; letter-spacing: 0.16em; margin-bottom: 14px; }
+    #s4-sum, #s4-done { font-size: 38px; line-height: 1.32; color: #E6F6FA; }
+    #s4-done { position: absolute; left: 43px; right: 38px; top: 88px; opacity: 0; }
+    #s4-btns { margin-top: 28px; }
+    .s4-btn { display: inline-flex; align-items: center; height: 84px; padding: 0 38px; border-radius: 42px; font-weight: 500; font-size: 32px; }
+    #s4-ok { color: #E6F6FA; background: rgb(85 230 255 / 0.16); border: 2px solid rgb(85 230 255 / 0.55); box-shadow: 0 0 40px rgb(85 230 255 / 0.18); }
+    #s4-no { color: rgb(200 230 240 / 0.55); margin-left: 18px; }
+    #s4-cursor { position: absolute; left: 0; top: 0; width: 76px; height: 98px; }
+    #s4-flood { position: absolute; inset: 0; background: #D6E8F7; opacity: 0; }
+  </style>
+  <div data-hf-id="hf-2tvg" id="root" data-composition-id="s4" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-gxyj" id="s4-corewrap" data-layout-allow-overflow><video data-hf-id="hf-m1xa" id="s4-core" class="clip" src="assets/video/core-s4.mp4" data-start="0" data-duration="10.2" data-track-index="2" muted playsinline></video></div>
+    <div data-hf-id="hf-dldy" id="s4-said"><span data-hf-id="hf-ibbb" class="q">«</span><span data-hf-id="hf-xwvx">Перенеси</span> <span data-hf-id="hf-ulzs">презентацію</span> <span data-hf-id="hf-fdm4">на</span> <span data-hf-id="hf-tsqa">завтра,</span> <span data-hf-id="hf-lglg">на</span> <span data-hf-id="hf-a1ge">10:00</span><span data-hf-id="hf-oo7r" class="q">»</span></div>
+    <div data-hf-id="hf-dm8r" id="s4-card">
+      <div data-hf-id="hf-2iee" id="s4-edge"></div><div data-hf-id="hf-wpwl" id="s4-edge-ok"></div>
+      <div data-hf-id="hf-eas5" id="s4-label">Перенесення</div>
+      <div data-hf-id="hf-i50t" id="s4-sum">Перенести «Підготувати презентацію для інвесторів» на 2026-10-29 10:00</div>
+      <div data-hf-id="hf-lr5q" id="s4-btns"><span data-hf-id="hf-k3ml" id="s4-ok" class="s4-btn">Підтвердити</span><span data-hf-id="hf-dq0h" id="s4-no" class="s4-btn">Скасувати</span></div>
+      <div data-hf-id="hf-m873" id="s4-done">✅ Задачу перенесено на 2026-10-29 10:00.</div>
+    </div>
+    <svg data-hf-id="hf-vc4i" id="s4-cursor" viewBox="0 0 28 36"><path data-hf-id="hf-188o" d="M2 2 L2 29 L9 22.5 L13.6 33 L18 31 L13.5 20.8 L23 20.8 Z" fill="#fff" stroke="#03141A" stroke-width="2" stroke-linejoin="round"/></svg>
+    <div data-hf-id="hf-ma6n" id="s4-flood"></div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    // the core is the cabinet's own 3D core (src/core-film.ts), baked to video frame by frame
+
+    tl.set('#s4-corewrap', { x: -540, scale: 0.75 }, 0);
+    // what she says, word by word on the narrator's words
+    const words = document.querySelectorAll('#s4-said span');
+    const wt = [1.6, 1.7, 2.2, 2.9, 3.0, 3.5, 3.6, 3.7];
+    words.forEach((w, i) => tl.fromTo(w, { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.13, ease: 'power2.out' }, wt[i]));
+    // "Асистент готує дію": the card is carried out of the core
+    tl.fromTo('#s4-card', { opacity: 0, x: -620, scale: 0.35, filter: 'blur(10px)' }, { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)', duration: 0.7, ease: 'expo.out' }, 4.4);
+    // the cursor comes in and confirms
+    tl.fromTo('#s4-cursor', { x: 1980, y: 1120 }, { x: 1010, y: 778, duration: 1.0, ease: 'power3.out' }, 6.1);
+    tl.to('#s4-cursor', { scale: 0.86, duration: 0.08, ease: 'power2.in', transformOrigin: '0% 0%' }, 7.4);
+    tl.to('#s4-cursor', { scale: 1, duration: 0.12, ease: 'power2.out' }, 7.48);
+    tl.to('#s4-ok', { backgroundColor: 'rgba(85,230,255,0.42)', duration: 0.08 }, 7.42);
+    tl.to(['#s4-sum', '#s4-btns', '#s4-label'], { opacity: 0, filter: 'blur(6px)', duration: 0.15 }, 7.55);
+    tl.to('#s4-edge-ok', { opacity: 1, duration: 0.2 }, 7.55);
+    tl.fromTo('#s4-done', { filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 7.65);
+    tl.to('#s4-cursor', { x: 1980, y: 1200, duration: 0.5, ease: 'power3.in' }, 8.3);
+    // daylight floods in
+    tl.to(['#s4-said', '#s4-card'], { opacity: 0, filter: 'blur(10px)', duration: 0.25, stagger: 0.05 }, 9.45);
+    tl.to('#s4-corewrap', { opacity: 0, scale: 0.6, duration: 0.4, ease: 'power3.in' }, 9.5);
+    tl.to('#s4-flood', { opacity: 1, duration: 0.45, ease: 'power2.inOut' }, 9.7);
+    window.__timelines['s4'] = tl;
+  </script>
+</template>

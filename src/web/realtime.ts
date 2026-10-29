@@ -3,7 +3,6 @@ import { DateTime } from 'luxon';
 import { buildSystemPrompt, runToolCall } from '../agent/agent.js';
 import { buildVoiceTools, toolSpecs, type ToolContext } from '../agent/tools.js';
 import { createRealtimeSecret, type RealtimeSecret } from '../integrations/openai.js';
-import { transcriptionHint } from '../lib/wake.js';
 import { nudgesAfter } from '../modules/nudges.js';
 import type { Services } from '../services.js';
 import { kvGet, kvSet } from '../store/kv.js';
@@ -23,9 +22,13 @@ export async function buildRealtimeSession(s: Services, opts: { handsFree: boole
     instructions: await buildSystemPrompt(s, 'voice'),
     audio: {
       input: {
-        transcription: { model: s.cfg.OPENAI_TRANSCRIBE_MODEL, language: st.language, prompt: transcriptionHint(st.assistantName) },
-        // hands-free: the browser decides when to answer (only when called by name), so no automatic replies
-        turn_detection: { type: 'semantic_vad', create_response: !opts.handsFree, interrupt_response: true },
+        // no context prompt here: on noise the recogniser would return the prompt itself as «speech»
+        transcription: { model: s.cfg.OPENAI_TRANSCRIBE_MODEL, language: st.language },
+        // laptop mic + speakers: suppress room noise before it reaches the model
+        noise_reduction: { type: 'far_field' },
+        // The browser decides when to answer, from the transcript: noise and the assistant's own voice coming back
+        // through the speakers must neither start a reply nor cut the current one.
+        turn_detection: { type: 'semantic_vad', eagerness: 'low', create_response: false, interrupt_response: false },
       },
       output: { voice: s.cfg.OPENAI_REALTIME_VOICE },
     },

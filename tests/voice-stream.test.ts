@@ -111,6 +111,15 @@ describe('/api/voice/stream', () => {
     expect(env.llm.calls.at(-1)!.messages[0]!.content).toContain('СЬОГОДНІ');
   });
 
+  it('the assistant\'s own last answer heard through the speakers is not taken as a question', async () => {
+    const { env, call } = await setup();
+    await env.s.messages.add(42, 'assistant', 'Далі рев’ю дизайну о третій, а потім тренування.');
+    env.llm.transcripts.push('далі рев’ю дизайну о третій а потім тренування');
+    const evs = await call(Buffer.alloc(3000, 1));
+    expect(evs.map((e) => e.type)).toEqual(['transcript', 'skipped', 'done']);
+    expect(env.llm.calls).toHaveLength(0);
+  });
+
   it('hands-free without the name: skipped, nothing generated', async () => {
     const { env, call } = await setup();
     env.llm.transcripts.push('обговорюємо бюджет');

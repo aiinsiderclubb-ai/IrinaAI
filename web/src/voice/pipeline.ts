@@ -35,6 +35,9 @@ export class StandardVoice implements VoiceEngine {
   private followUntil = 0;
   private lastActivity = Date.now();
   private running = false;
+  /** ignore the mic until then: the tail of the assistant's voice still rings in the room */
+  private quietUntil = 0;
+  private bargeIn = localStorage.getItem('aia.bargeIn') === '1';
 
   constructor(
     private h: VoiceHandlers,
@@ -45,6 +48,7 @@ export class StandardVoice implements VoiceEngine {
     const p = new StreamPlayer();
     p.onStart = () => this.running && this.h.onStatus('speaking');
     p.onIdle = () => {
+      this.quietUntil = Date.now() + 700;
       this.followUntil = Date.now() + FOLLOW_UP_MS;
       // more audio may still be on its way while the stream is open
       if (this.running && !this.streaming) this.h.onStatus('listening');
@@ -96,6 +100,13 @@ export class StandardVoice implements VoiceEngine {
     void this.run({ say: text });
   }
 
+  interrupt(): void {
+    this.turn?.abort();
+    this.player?.stop();
+    this.quietUntil = Date.now() + 300;
+    if (this.running) this.h.onStatus('listening');
+  }
+
   /** One streamed turn: text and voice arrive sentence by sentence. */
   private async run(body: Blob | Record<string, unknown>, query?: string): Promise<void> {
     this.busy = true;
@@ -137,8 +148,13 @@ export class StandardVoice implements VoiceEngine {
       this.noiseFloor = Math.max(this.noiseFloor * 0.8 + rms * 0.2, 0.004);
       return;
     }
-    const speaking = Boolean(this.player?.playing);
-    // while the assistant talks, demand a louder voice so its own sound leaking into the mic is not "speech"
+    const speaking = Boolean(this.player?.playing) || now < this.quietUntil;
+    // Half-duplex: while the assistant talks (and a moment after) the mic hears mostly the speakers, so we do not
+    // start recording at all. Tap on the core interrupts. With headphones, «перебивати голосом» re-enables barge-in.
+    if (speaking && !this.bargeIn) {
+      this.aboveFrames = 0;
+      return;
+    }
     const threshold = Math.max(0.018, this.noiseFloor * 3) * (speaking ? 2.5 : 1);
     const recording = this.recorder?.state === 'recording';
 

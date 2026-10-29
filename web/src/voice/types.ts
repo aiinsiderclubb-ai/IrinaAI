@@ -14,6 +14,8 @@ export interface VoiceEngine {
   start(): Promise<void>;
   stop(): void;
   setMuted(muted: boolean): void;
+  /** stop the answer being spoken, keep the session */
+  interrupt(): void;
   /** proactive message from the server: say it out loud */
   announce(text: string): void;
   level(): number;

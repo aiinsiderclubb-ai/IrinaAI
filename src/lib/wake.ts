@@ -29,7 +29,40 @@ export function transcriptionHint(assistantName: string): string {
 export function isPhantomTranscript(text: string, assistantName: string): boolean {
   const t = text.trim().toLowerCase();
   if (!t) return true;
-  const hint = transcriptionHint(assistantName).toLowerCase();
-  if (hint.includes(t) || t.includes('розмова українською з особистим асистентом')) return true;
+  const flat = (v: string) => v.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const hint = flat(transcriptionHint(assistantName));
+  const ft = flat(t);
+  // any fragment of our own hint («Розмова українською…», «Так, Ні, Підтверджую…») is the recogniser talking, not the owner
+  // (a single «так» / «давай» is a real answer, so only fragments of two words or more count)
+  if (ft && ((ft.includes(' ') && hint.includes(ft)) || ft.includes('розмова українською'))) return true;
   return /^(дякую за перегляд|субтитри|продовження сліду|thank you for watching)[.!]*$/i.test(t);
+}
+
+const words = (t: string) =>
+  t
+    .toLowerCase()
+    .replace(/[’'ʼ`]/g, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+
+/**
+ * Did the microphone just hear the assistant's own voice from the speakers?
+ * Most words of the transcript appear in what the assistant said a moment ago.
+ */
+export function isEcho(transcript: string, assistantSaid: string | undefined): boolean {
+  if (!assistantSaid) return false;
+  const heard = words(transcript);
+  if (heard.length < 2) return false;
+  const said = new Set(words(assistantSaid));
+  const hits = heard.filter((w) => said.has(w)).length;
+  return hits / heard.length >= 0.6;
+}
+
+/** Worth answering: real words, not the recogniser's hint, not a lone filler. */
+export function isMeaningful(transcript: string, assistantName: string): boolean {
+  if (isPhantomTranscript(transcript, assistantName)) return false;
+  const w = words(transcript);
+  if (w.length === 0) return /^(так|ні|да|ок|ага)[.!?]*$/i.test(transcript.trim());
+  return true;
 }

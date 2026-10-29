@@ -1,6 +1,6 @@
 import { api } from '../api';
 import type { Proposal } from '../types';
-import { isAddressed } from '../../../src/lib/wake';
+import { isAddressed, isEcho, isMeaningful } from '../../../src/lib/wake';
 import { LevelMeter } from './level';
 import { RealtimeUnavailable, type VoiceEngine, type VoiceHandlers } from './types';
 
@@ -32,6 +32,8 @@ export class RealtimeVoice implements VoiceEngine {
   private idleTimer?: number;
   private name = '';
   private responding = false;
+  private speaking = false;
+  private lastAssistantText = '';
 
   constructor(
     private h: VoiceHandlers,
@@ -93,6 +95,14 @@ export class RealtimeVoice implements VoiceEngine {
     }, 30_000);
   }
 
+  /** Stop the current answer (tap on the core, or the owner starts talking). */
+  interrupt(): void {
+    if (this.responding) this.send({ type: 'response.cancel' });
+    this.send({ type: 'output_audio_buffer.clear' });
+    this.responding = false;
+    this.speaking = false;
+  }
+
   stop(): void {
     window.clearInterval(this.idleTimer);
     this.dc?.close();
@@ -140,15 +150,23 @@ export class RealtimeVoice implements VoiceEngine {
         break;
       case 'conversation.item.input_audio_transcription.completed': {
         const text = String(ev.transcript ?? '').trim();
-        if (!text) break;
+        // noise, the recogniser's filler, or our own voice from the speakers: drop it from the conversation too
+        if (!isMeaningful(text, this.name) || isEcho(text, this.lastAssistantText)) {
+          if (ev.item_id) this.send({ type: 'conversation.item.delete', item_id: ev.item_id });
+          if (!this.responding && !this.speaking) this.h.onStatus('listening');
+          break;
+        }
+        if (this.handsFree && !isAddressed(text, this.name) && Date.now() >= this.followUntil) {
+          if (ev.item_id) this.send({ type: 'conversation.item.delete', item_id: ev.item_id });
+          this.h.onStatus('listening');
+          break;
+        }
         this.lastUserText = text;
         this.h.onLine('user', text);
         void api.post('/api/realtime/transcript', { role: 'user', text }).catch(() => {});
-        if (this.handsFree) {
-          if (isAddressed(text, this.name) || Date.now() < this.followUntil) {
-            if (!this.responding) this.send({ type: 'response.create' });
-          } else this.h.onStatus('listening');
-        }
+        // a real phrase while the assistant talks = the owner interrupts
+        if (this.responding || this.speaking) this.interrupt();
+        this.send({ type: 'response.create' });
         break;
       }
       case 'response.created':
@@ -156,9 +174,12 @@ export class RealtimeVoice implements VoiceEngine {
         this.h.onStatus('thinking');
         break;
       case 'output_audio_buffer.started':
+        this.speaking = true;
         this.h.onStatus('speaking');
         break;
       case 'output_audio_buffer.stopped':
+      case 'output_audio_buffer.cleared':
+        this.speaking = false;
         this.followUntil = Date.now() + FOLLOW_UP_MS;
         this.h.onStatus('listening');
         break;
@@ -166,6 +187,7 @@ export class RealtimeVoice implements VoiceEngine {
       case 'response.audio_transcript.done': {
         const text = String(ev.transcript ?? '').trim();
         if (text) {
+          this.lastAssistantText = text;
           this.h.onLine('assistant', text);
           void api.post('/api/realtime/transcript', { role: 'assistant', text }).catch(() => {});
         }

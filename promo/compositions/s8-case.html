@@ -1,0 +1,49 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-cyr.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-lat.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #55E6FF; color: #03141A; }
+    #s8-days { position: absolute; left: 150px; top: 120px; display: flex; gap: 18px; }
+    .s8-day { position: relative; width: 214px; height: 150px; border-radius: 22px; border: 3px solid rgb(3 20 26 / 0.85); padding: 18px 22px; font-weight: 600; font-size: 40px; font-variant-numeric: tabular-nums; }
+    .s8-day small { display: block; font-weight: 500; font-size: 30px; opacity: 0.65; margin-top: 4px; }
+    .s8-day.last { background: #03141A; color: #55E6FF; border-color: #03141A; }
+    #s8-numclip { position: absolute; left: 140px; top: 380px; width: 620px; height: 360px; overflow: hidden; }
+    #s8-num { display: block; }
+    #s8-num i { display: block; height: 360px; font-style: normal; font-weight: 700; font-size: 380px; line-height: 360px; letter-spacing: -0.05em; }
+    .s8-unit { position: absolute; left: 780px; top: 470px; width: 1000px; font-weight: 600; font-size: 104px; line-height: 1.02; letter-spacing: -0.025em; }
+    #s8-note { position: absolute; left: 788px; top: 760px; font-weight: 500; font-size: 38px; opacity: 0.7; }
+    #s8-dark { position: absolute; inset: 0; background: #04090D; opacity: 0; }
+    #s8-u2, #s8-u3, #s8-note { opacity: 0; }
+  </style>
+  <div data-hf-id="hf-rq2o" id="root" data-composition-id="s8" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-3q70" id="s8-days"><div data-hf-id="hf-9mv3" class="s8-day" id="s8-d0">22.10<small data-hf-id="hf-yg47">старт</small></div><div data-hf-id="hf-3fqp" class="s8-day" id="s8-d1">23.10<small data-hf-id="hf-shqc">&nbsp;</small></div><div data-hf-id="hf-diyf" class="s8-day" id="s8-d2">24.10<small data-hf-id="hf-483g">&nbsp;</small></div><div data-hf-id="hf-pod1" class="s8-day" id="s8-d3">25.10<small data-hf-id="hf-316d">&nbsp;</small></div><div data-hf-id="hf-hi6n" class="s8-day" id="s8-d4">26.10<small data-hf-id="hf-3fhe">&nbsp;</small></div><div data-hf-id="hf-usll" class="s8-day" id="s8-d5">27.10<small data-hf-id="hf-5f0j">&nbsp;</small></div><div data-hf-id="hf-o4gf" class="s8-day last" id="s8-d6">28.10<small data-hf-id="hf-tlbe">запуск</small></div></div>
+    <div data-hf-id="hf-e4gd" id="s8-numclip"><div data-hf-id="hf-u9gj" id="s8-num"><i data-hf-id="hf-couk">8</i><i data-hf-id="hf-wast">25</i><i data-hf-id="hf-9wpd">7</i></div></div>
+    <div data-hf-id="hf-dq8a" class="s8-unit" id="s8-u1">модулів</div>
+    <div data-hf-id="hf-xbqz" class="s8-unit" id="s8-u2">інструментів агента</div>
+    <div data-hf-id="hf-xqq6" class="s8-unit" id="s8-u3">днів від старту до запуску</div>
+    <div data-hf-id="hf-hh1c" id="s8-note">108 автотестів · Telegram і веб-кабінет</div>
+    <div data-hf-id="hf-adld" id="s8-dark"></div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(['#s8-d0', '#s8-d1', '#s8-d2', '#s8-d3', '#s8-d4', '#s8-d5'], { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4, stagger: 0.06, ease: 'expo.out' }, 0.05);
+    // one number rolls through the case: 8 → 25 → 7
+    tl.fromTo('#s8-numclip', { opacity: 0, filter: 'blur(10px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 0.22);
+    tl.fromTo('#s8-u1', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18 }, 0.4);
+    tl.to('#s8-num', { y: -360, duration: 0.28, ease: 'power3.inOut' }, 1.28);
+    tl.to('#s8-u1', { opacity: 0, filter: 'blur(8px)', duration: 0.15 }, 1.28);
+    tl.fromTo('#s8-u2', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18 }, 1.45);
+    tl.to('#s8-num', { y: -720, duration: 0.28, ease: 'power3.inOut' }, 3.08);
+    tl.to('#s8-u2', { opacity: 0, filter: 'blur(8px)', duration: 0.15 }, 3.08);
+    tl.fromTo('#s8-u3', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18 }, 3.25);
+    // the seven days fill in, one by one, up to the launch
+    tl.to(['#s8-d0', '#s8-d1', '#s8-d2', '#s8-d3', '#s8-d4', '#s8-d5'], { backgroundColor: 'rgba(3,20,26,0.14)', duration: 0.15, stagger: 0.08 }, 3.3);
+    tl.fromTo('#s8-note', { opacity: 0, filter: 'blur(6px)' }, { opacity: 0.7, filter: 'blur(0px)', duration: 0.2 }, 3.85);
+    tl.to(['#s8-numclip', '#s8-u3', '#s8-note', '#s8-days'], { opacity: 0, filter: 'blur(10px)', duration: 0.25, stagger: 0.04 }, 5.55);
+    tl.to('#s8-dark', { opacity: 1, duration: 0.3, ease: 'power2.inOut' }, 5.85);
+    window.__timelines['s8'] = tl;
+  </script>
+</template>

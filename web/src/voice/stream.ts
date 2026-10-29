@@ -58,7 +58,9 @@ export class StreamPlayer {
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(this.out);
-    const startAt = Math.max(this.at, this.ctx.currentTime + 0.04);
+    // jitter buffer: start a fresh stream ~0.25 s ahead; after an underrun, rebuffer a little instead of stuttering
+    const now = this.ctx.currentTime;
+    const startAt = this.at > now ? this.at : now + (this.sources.size ? 0.15 : 0.25);
     src.start(startAt);
     this.at = startAt + buffer.duration;
     if (!this.sources.size) this.onStart?.();

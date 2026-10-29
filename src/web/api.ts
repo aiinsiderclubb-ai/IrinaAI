@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { runPending } from '../actions.js';
 import { Agent, type AgentReply } from '../agent/agent.js';
 import { buildVoiceTools } from '../agent/tools.js';
-import { isAddressed, isPhantomTranscript, transcriptionHint } from '../lib/wake.js';
+import { isAddressed, isEcho, isPhantomTranscript, transcriptionHint } from '../lib/wake.js';
 import { kvGet, kvSet } from '../store/kv.js';
 import { signState } from '../lib/crypto.js';
 import { errMsg } from '../lib/log.js';
@@ -204,6 +204,9 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
             cfg.OPENAI_VOICE_TRANSCRIBE_MODEL,
           );
           if (userText && isPhantomTranscript(userText, st.assistantName)) userText = '';
+          // the mic heard the assistant's last answer from the speakers
+          const lastSaid = (await s.messages.recent(ownerId, 2, 1)).filter((m) => m.role === 'assistant').at(-1)?.content;
+          if (userText && isEcho(userText, lastSaid)) userText = '';
           emit({ type: 'transcript', text: userText, ms: Date.now() - started });
           if (!userText || (req.query.handsFree === '1' && req.query.follow !== '1' && !isAddressed(userText, st.assistantName))) {
             emit({ type: 'skipped' });

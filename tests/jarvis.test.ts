@@ -78,6 +78,19 @@ describe('voice agent across turns', () => {
   });
 });
 
+describe('echo and noise guards', () => {
+  it('recognises the assistant\'s own words, the recogniser filler and real speech', async () => {
+    const { isEcho, isMeaningful } = await import('../src/lib/wake.js');
+    const said = 'Окей, поїхали. Я знаю, що тебе звати Ірина, і я твій особистий асистент.';
+    expect(isEcho('я знаю що тебе звати Ірина', said)).toBe(true);
+    expect(isEcho('а що в мене завтра?', said)).toBe(false);
+    expect(isMeaningful('Розмова українською з особистим асистентом Асистент. Короткі відповіді: «Так», «Ні»', 'Асистент')).toBe(false);
+    expect(isMeaningful('Розмова українською.', 'Асистент')).toBe(false);
+    expect(isMeaningful('Так.', 'Аріна')).toBe(true);
+    expect(isMeaningful('перенеси дзвінок на завтра', 'Аріна')).toBe(true);
+  });
+});
+
 describe('realtime session', () => {
   it('passes tools + personality to OpenAI, hands-free disables auto replies, greets once a day', async () => {
     const env = await makeEnv({ settings: { assistantName: 'Аріна' } });
@@ -92,8 +105,12 @@ describe('realtime session', () => {
     expect((await open(true)).greet).toBe(false);
 
     const [normal, handsFree] = sessions;
-    expect(normal.audio.input.turn_detection.create_response).toBe(true);
-    expect(handsFree.audio.input.turn_detection.create_response).toBe(false);
+    // replies are started by the browser from the transcript: noise / echo never trigger or cut an answer
+    for (const sess of [normal, handsFree]) {
+      expect(sess.audio.input.turn_detection).toMatchObject({ create_response: false, interrupt_response: false, eagerness: 'low' });
+      expect(sess.audio.input.noise_reduction).toEqual({ type: 'far_field' });
+      expect(sess.audio.input.transcription.prompt).toBeUndefined(); // the hint used to come back as «speech» on noise
+    }
     expect(normal.audio.input.transcription.language).toBe('uk');
     const names = normal.tools.map((t: any) => t.name);
     expect(names).toEqual(expect.arrayContaining(['task_create', 'calendar_list', 'memory_save', 'pending_confirm', 'pending_cancel']));

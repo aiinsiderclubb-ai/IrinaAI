@@ -219,6 +219,8 @@ export class CoreScene {
     const now = performance.now();
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
+    this.watchPerformance(now - this.lastFrame);
+    this.lastFrame = now;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const k = 1 - Math.exp(-dt * 3.2); // smooth state transitions
 
@@ -247,6 +249,28 @@ export class CoreScene {
 
     this.composer.render();
   };
+
+  private lastFrame = performance.now();
+  private slowFrames = 0;
+  private frames = 0;
+  private degraded = false;
+
+  /** Weak laptops: if the core keeps dropping frames, turn bloom off and render at 1x so audio and UI stay smooth. */
+  private watchPerformance(frameMs: number): void {
+    if (this.degraded || document.hidden) return;
+    this.frames++;
+    if (frameMs > 34) this.slowFrames++;
+    if (this.frames < 180) return;
+    if (this.slowFrames / this.frames > 0.3) {
+      this.degraded = true;
+      this.bloom.enabled = false;
+      this.renderer.setPixelRatio(1);
+      this.uniforms.uPixelRatio.value = 1;
+      this.resize();
+    }
+    this.frames = 0;
+    this.slowFrames = 0;
+  }
 
   dispose(): void {
     this.disposed = true;

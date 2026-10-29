@@ -215,6 +215,14 @@ export function Core({ onChanged }: { onChanged: () => void }) {
     }
   };
 
+  const [bargeIn, setBargeIn] = useState(() => localStorage.getItem('aia.bargeIn') === '1');
+  const toggleBargeIn = () => {
+    const on = !bargeIn;
+    setBargeIn(on);
+    localStorage.setItem('aia.bargeIn', on ? '1' : '0');
+    if (active) toast('Зміниться з наступної розмови');
+  };
+
   const toggleHandsFree = () => {
     const on = !handsFree;
     setHandsFree(on);
@@ -254,6 +262,13 @@ export function Core({ onChanged }: { onChanged: () => void }) {
         <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
           <button className={`core-chip ${handsFree ? 'on' : ''}`} onClick={toggleHandsFree} title="Слухаю постійно, відповідаю, коли кличуть на ім’я">
             {handsFree ? '● На зв’язку' : '○ На зв’язку'}
+          </button>
+          <button
+            className={`core-chip ${bargeIn ? 'on' : ''}`}
+            onClick={toggleBargeIn}
+            title="У навушниках можна перебивати асистента голосом. Без навушників — тап по ядру"
+          >
+            {bargeIn ? '● Навушники' : '○ Навушники'}
           </button>
           <button className={`core-chip ${drawer ? 'on' : ''}`} onClick={() => setDrawer(!drawer)}>
             Історія
@@ -367,7 +382,12 @@ export function Core({ onChanged }: { onChanged: () => void }) {
       </footer>
 
       {/* tap on the core itself starts/stops the conversation */}
-      <button className="core-hit" onClick={active ? stop : start} aria-label={active ? 'Завершити розмову' : 'Почати розмову'} />
+      {/* tap on the core: start; while it speaks — stop the answer (the session stays); otherwise end the session */}
+      <button
+        className="core-hit"
+        onClick={() => (!active ? void start() : shown === 'speaking' || shown === 'thinking' ? engine?.interrupt() : stop())}
+        aria-label={!active ? 'Почати розмову' : shown === 'speaking' ? 'Зупинити відповідь' : 'Завершити розмову'}
+      />
     </div>
   );
 }

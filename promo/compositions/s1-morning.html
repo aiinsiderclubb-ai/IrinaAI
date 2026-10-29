@@ -1,0 +1,84 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #F3BE8E; }
+    #s1-ground { position: absolute; inset: 0; background: radial-gradient(1100px 900px at 8% 0%, #FFE0C2 0%, rgb(255 224 194 / 0) 70%), #F3BE8E; }
+    #s1-cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+    #s1-clock { position: absolute; left: 150px; top: 300px; height: 300px; overflow: hidden; font-weight: 300; font-size: 300px; line-height: 1; letter-spacing: -0.03em; color: #14110E; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .s1-dg { display: inline-block; height: 300px; overflow: hidden; vertical-align: top; }
+    .s1-col { display: block; }
+    .s1-col i { display: block; font-style: normal; height: 300px; }
+    #s1-date { position: absolute; left: 162px; top: 640px; font-weight: 500; font-size: 38px; color: rgb(20 17 14 / 0.62); }
+    #s1-phone { position: absolute; left: 1080px; top: 50px; width: 500px; height: 980px; border-radius: 72px; background: #0B0B0D; padding: 14px; box-shadow: 0 40px 80px rgb(60 30 0 / 0.28), inset 0 0 0 1px rgb(255 255 255 / 0.18); }
+    #s1-screen { position: relative; width: 100%; height: 100%; border-radius: 58px; overflow: hidden; background: #071219; }
+    #s1-island { position: absolute; left: 50%; top: 16px; width: 120px; height: 34px; margin-left: -60px; border-radius: 17px; background: #000; z-index: 3; }
+    #s1-head { position: absolute; left: 0; right: 0; top: 0; height: 132px; padding: 70px 28px 0; background: #0b1a22; border-bottom: 1px solid rgb(120 220 255 / 0.12); display: flex; align-items: center; gap: 16px; }
+    #s1-ava { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e6fbff, #55e6ff 45%, #0b5a6c 100%); }
+    #s1-name { color: #e6f6fa; font-weight: 600; font-size: 30px; line-height: 1.1; }
+    #s1-bubble { position: absolute; left: 22px; right: 40px; top: 160px; background: #10202A; border-radius: 26px 26px 26px 8px; padding: 22px 24px; color: rgb(220 240 246 / 0.9); font-size: 25px; line-height: 1.46; transform-origin: 0% 100%; }
+    .s1-ln { min-height: 0.5em; }
+    .s1-ln b { color: #e6f6fa; font-weight: 700; }
+    .s1-gap { height: 18px; }
+    #s1-conf { color: #FF7B7B; }
+    #s1-conf b { color: #FF7B7B; }
+    #s1-red { position: absolute; inset: 0; background: #071219; opacity: 0; }
+  </style>
+  <div data-hf-id="hf-3pu3" id="root" data-composition-id="s1" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-pm5n" id="s1-ground"></div>
+    <div data-hf-id="hf-d2kf" id="s1-cam">
+      <div data-hf-id="hf-c9io" id="s1-clock">07:5<span data-hf-id="hf-5095" class="s1-dg"><span data-hf-id="hf-wone" class="s1-col" id="s1-roll"><i data-hf-id="hf-9wpd">7</i><i data-hf-id="hf-couk">8</i></span></span></div>
+      <div data-hf-id="hf-642z" id="s1-date">середа, 28 жовтня</div>
+      <div data-hf-id="hf-mnde" id="s1-phone">
+        <div data-hf-id="hf-bw9a" id="s1-screen">
+          <div data-hf-id="hf-zmkp" id="s1-island"></div>
+          <div data-hf-id="hf-ihdk" id="s1-head"><div data-hf-id="hf-7uzk" id="s1-ava"></div><div data-hf-id="hf-7yvl" id="s1-name">Асистент</div></div>
+          <div data-hf-id="hf-yusg" id="s1-bubble">
+            <div data-hf-id="hf-grev" class="s1-ln"><b data-hf-id="hf-r4vu">☀️ Доброго ранку! ср, 28 жовт.</b></div>
+            <div data-hf-id="hf-hpnn" class="s1-gap"></div>
+            <div data-hf-id="hf-wd0n" class="s1-ln"><b data-hf-id="hf-pphk">🗓 Графік дня</b></div>
+            <div data-hf-id="hf-akaw" class="s1-ln">• 09:30–10:00 Стендап команди</div>
+            <div data-hf-id="hf-s4pr" class="s1-ln">• 11:00–12:00 Зустріч з фондом</div>
+            <div data-hf-id="hf-wpzl" class="s1-ln">• 11:30–12:15 Стоматолог</div>
+            <div data-hf-id="hf-chmf" class="s1-ln">• 15:00–16:00 Рев’ю дизайну лендингу</div>
+            <div data-hf-id="hf-e2pm" class="s1-ln">• 19:00–20:00 Тренування</div>
+            <div data-hf-id="hf-owa8" class="s1-ln" id="s1-conf">⚠️ <b data-hf-id="hf-0mdz">Конфлікти:</b> «Зустріч з фондом» ↔ «Стоматолог»</div>
+            <div data-hf-id="hf-oylf" class="s1-gap"></div>
+            <div data-hf-id="hf-vypm" class="s1-ln"><b data-hf-id="hf-jvvs">⭐ Три головні пріоритети</b></div>
+            <div data-hf-id="hf-emla" class="s1-ln">• Відповісти юристу щодо договору</div>
+            <div data-hf-id="hf-w7s4" class="s1-ln">• Підготувати презентацію для інвесторів</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div data-hf-id="hf-zarj" id="s1-red"></div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    document.fonts.ready.then(() => {
+    const tl = gsap.timeline({ paused: true });
+    const root = document.querySelector('[data-composition-id="s1"]');
+    const q = (s) => root.querySelector(s);
+    const lines = root.querySelectorAll('.s1-ln');
+
+    // camera target: the conflict line, measured once with the camera at rest
+    const conf = q('#s1-conf').getBoundingClientRect();
+    const base = root.getBoundingClientRect();
+    const cx = conf.left - base.left + conf.width / 2;
+    const cy = conf.top - base.top + conf.height / 2;
+    const at = (s) => ({ scale: s, x: 960 - cx * s, y: 540 - cy * s });
+
+    tl.fromTo('#s1-roll', { yPercent: 0 }, { yPercent: -50, duration: 0.35, ease: 'power3.inOut' }, 0.45);
+    tl.fromTo('#s1-date', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2, ease: 'power2.out' }, 0.3);
+    // the report arrives as one message, then its lines land
+    tl.fromTo('#s1-bubble', { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' }, 1.0);
+    tl.fromTo(lines, { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18, stagger: 0.07, ease: 'power2.out' }, 1.15);
+    tl.fromTo('#s1-conf', { backgroundColor: 'rgba(255,107,107,0)' }, { backgroundColor: 'rgba(255,107,107,0.16)', duration: 0.3, ease: 'power2.out' }, 2.4);
+    // push in to read the conflict, then fly through it
+    tl.fromTo('#s1-cam', { scale: 1, x: 0, y: 0 }, { ...at(2.3), duration: 1.4, ease: 'power2.inOut' }, 2.6);
+    tl.to('#s1-cam', { ...at(9), filter: 'blur(14px)', duration: 0.5, ease: 'power3.in' }, 4.5);
+    tl.fromTo('#s1-red', { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.in' }, 4.8);
+    window.__timelines['s1'] = tl;
+    });
+  </script>
+</template>

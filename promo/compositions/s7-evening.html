@@ -1,0 +1,71 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-cyr.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-lat.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #55E6FF; }
+    #s7-world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: #2B2160; }
+    #s7-ground { position: absolute; inset: 0; background: radial-gradient(1400px 800px at 50% 110%, #4A3A9C 0%, rgb(74 58 156 / 0) 70%), #2B2160; }
+    #s7-lift { position: absolute; inset: 0; opacity: 0; background: radial-gradient(1200px 700px at 62% 40%, rgb(164 139 255 / 0.35) 0%, rgb(164 139 255 / 0) 70%); }
+    #s7-clock { position: absolute; left: 820px; top: 140px; height: 300px; overflow: hidden; font-weight: 300; font-size: 300px; line-height: 1; letter-spacing: -0.03em; color: #F1EEFF; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .s7-dg { display: inline-block; height: 300px; overflow: hidden; vertical-align: top; }
+    .s7-col { display: block; } .s7-col i { display: block; font-style: normal; height: 300px; }
+    #s7-line { position: absolute; left: 834px; top: 480px; width: 900px; font-weight: 500; font-size: 46px; line-height: 1.25; color: rgb(241 238 255 / 0.75); }
+    #s7-line em { font-style: normal; color: #F1EEFF; }
+    #s7-phone { position: absolute; left: 150px; top: 50px; width: 490px; height: 980px; border-radius: 73px; background: #0B0B0D; padding: 14px; box-shadow: 0 40px 90px rgb(8 0 30 / 0.45), inset 0 0 0 1px rgb(255 255 255 / 0.18); }
+    #s7-screen { position: relative; width: 100%; height: 100%; border-radius: 60px; overflow: hidden; background: #071219; }
+    #s7-island { position: absolute; left: 50%; top: 16px; width: 118px; height: 34px; margin-left: -59px; border-radius: 17px; background: #000; }
+    #s7-bubble { position: absolute; left: 20px; right: 30px; top: 86px; background: #10202A; border-radius: 26px 26px 26px 8px; padding: 22px 24px; color: rgb(220 240 246 / 0.9); font-size: 28px; line-height: 1.4; transform-origin: 0% 0%; }
+    .s7-ln b { color: #e6f6fa; font-weight: 700; }
+    .s7-gap { height: 16px; }
+  </style>
+  <div data-hf-id="hf-6yl5" id="root" data-composition-id="s7" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-mq7k" id="s7-world">
+      <div data-hf-id="hf-8bgd" id="s7-ground"></div>
+      <div data-hf-id="hf-gqar" id="s7-lift"></div>
+      <div data-hf-id="hf-kf7o" id="s7-clock"><span data-hf-id="hf-j72v" class="s7-dg"><span data-hf-id="hf-z6l8" class="s7-col" id="s7-a"><i data-hf-id="hf-943b">1</i><i data-hf-id="hf-8psa">2</i></span></span><span data-hf-id="hf-gu53" class="s7-dg"><span data-hf-id="hf-7uh3" class="s7-col" id="s7-b"><i data-hf-id="hf-cajj">9</i><i data-hf-id="hf-9iec">0</i></span></span>:<span data-hf-id="hf-gfu2" class="s7-dg"><span data-hf-id="hf-3wd2" class="s7-col" id="s7-c"><i data-hf-id="hf-apbf">5</i><i data-hf-id="hf-td0c">0</i></span></span><span data-hf-id="hf-g1j1" class="s7-dg"><span data-hf-id="hf-ck8x" class="s7-col" id="s7-d"><i data-hf-id="hf-t7fj">9</i><i data-hf-id="hf-s639">0</i></span></span></div>
+      <div data-hf-id="hf-ygh3" id="s7-line">Підсумок дня <em data-hf-id="hf-lcy0">складається сам</em></div>
+      <div data-hf-id="hf-nuxk" id="s7-phone">
+        <div data-hf-id="hf-mv1s" id="s7-screen">
+          <div data-hf-id="hf-7yx7" id="s7-island"></div>
+          <div data-hf-id="hf-ne7y" id="s7-bubble">
+            <div data-hf-id="hf-m0pa" class="s7-ln" id="s7-h"><b data-hf-id="hf-6gxa">🌙 Підсумок дня, ср, 28 жовт.</b></div>
+            <div data-hf-id="hf-kryl" class="s7-gap"></div>
+            <div data-hf-id="hf-hs1r" class="s7-ln s7-a"><b data-hf-id="hf-pc69">✅ Завершено сьогодні</b></div>
+            <div data-hf-id="hf-jc1k" class="s7-ln s7-a">• Надіслати рахунок клієнту</div>
+            <div data-hf-id="hf-pupt" class="s7-gap"></div>
+            <div data-hf-id="hf-945w" class="s7-ln s7-b"><b data-hf-id="hf-fo6q">⏳ Не завершено</b></div>
+            <div data-hf-id="hf-bbvr" class="s7-ln s7-b">• Відповісти юристу щодо договору</div>
+            <div data-hf-id="hf-eby0" class="s7-ln s7-b">• 1:1 з новим дизайнером</div>
+            <div data-hf-id="hf-njby" class="s7-ln s7-b">• Погодити бюджет маркетингу</div>
+            <div data-hf-id="hf-r1mw" class="s7-gap"></div>
+            <div data-hf-id="hf-9vtp" class="s7-ln s7-c"><b data-hf-id="hf-2eoc">🎯 Пріоритети на завтра</b></div>
+            <div data-hf-id="hf-ve7o" class="s7-ln s7-c">• Відповісти юристу щодо договору</div>
+            <div data-hf-id="hf-qzw6" class="s7-ln s7-c">• Підготувати презентацію для інвесторів</div>
+            <div data-hf-id="hf-vgad" class="s7-ln s7-c">• 1:1 з новим дизайнером</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo('#s7-clock', { opacity: 0, filter: 'blur(10px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.25 }, 0.0);
+    // 19:59 → 20:00 on "Двадцята"
+    ['#s7-d', '#s7-c', '#s7-b', '#s7-a'].forEach((id, i) => tl.fromTo(id, { yPercent: 0 }, { yPercent: -50, duration: 0.32, ease: 'power3.inOut' }, 0.38 + i * 0.05));
+    // the music opens: the day's summary writes itself
+    tl.to('#s7-lift', { opacity: 1, duration: 0.5, ease: 'power2.out' }, 1.55);
+    tl.fromTo('#s7-bubble', { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'expo.out' }, 1.57);
+    tl.fromTo('#s7-h', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18 }, 1.65);
+    tl.fromTo('#s7-line', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 1.75);
+    const sec = (cls, at) => tl.fromTo(cls, { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18, stagger: 0.08, ease: 'power2.out' }, at);
+    sec('.s7-a', 2.9);
+    sec('.s7-b', 3.8);
+    sec('.s7-c', 4.3);
+    // the evening shrinks into its square on the calendar of the build
+    tl.to('#s7-world', { x: 1542, y: 135, scale: 214 / 1920, borderRadius: 197, duration: 0.6, ease: 'power3.inOut' }, 6.8);
+    window.__timelines['s7'] = tl;
+  </script>
+</template>

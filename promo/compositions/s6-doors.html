@@ -1,0 +1,68 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-cyr.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-lat.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #D6E8F7; }
+    #s6-ground { position: absolute; inset: 0; background: radial-gradient(1200px 900px at 100% 0%, #F2F8FD 0%, rgb(242 248 253 / 0) 70%), #D6E8F7; }
+    #s6-dusk { position: absolute; inset: 0; opacity: 0; background: radial-gradient(1400px 800px at 50% 110%, #4A3A9C 0%, rgb(74 58 156 / 0) 70%), #2B2160; }
+    #s6-phone { position: absolute; left: 150px; top: 110px; width: 430px; height: 860px; border-radius: 64px; background: #0B0B0D; padding: 12px; box-shadow: 0 40px 80px rgb(6 32 44 / 0.25), inset 0 0 0 1px rgb(255 255 255 / 0.18); transform-origin: 0 0; }
+    #s6-screen { position: relative; width: 100%; height: 100%; border-radius: 52px; overflow: hidden; background: #071219; }
+    #s6-island { position: absolute; left: 50%; top: 14px; width: 104px; height: 30px; margin-left: -52px; border-radius: 15px; background: #000; }
+    .s6-msg { position: absolute; border-radius: 24px; padding: 18px 22px; font-size: 28px; line-height: 1.38; color: rgb(220 240 246 / 0.92); }
+    #s6-me { right: 20px; top: 110px; width: 300px; background: #1A4A5A; border-bottom-right-radius: 8px; transform-origin: 100% 100%; }
+    #s6-wave { display: flex; gap: 5px; align-items: center; height: 44px; }
+    #s6-wave i { display: block; width: 6px; border-radius: 3px; background: #8ff6ff; }
+    #s6-bot { left: 20px; top: 240px; width: 370px; background: #10202A; border-bottom-left-radius: 8px; transform-origin: 0% 100%; }
+    #s6-bot b { color: #e6f6fa; }
+    #s6-win { position: absolute; left: 700px; top: 110px; width: 1070px; height: 456px; border-radius: 26px; background: #071219 url('assets/screens/finance-after.png') left top / 100% auto no-repeat; box-shadow: 0 40px 80px rgb(6 32 44 / 0.25); }
+    #s6-row { opacity: 0; position: absolute; left: 884px; top: 461px; width: 760px; height: 42px; border-radius: 10px; border: 3px solid #55E6FF; }
+    .s6-lbl { position: absolute; top: 990px; font-weight: 600; font-size: 34px; color: #06202C; }
+    #s6-l1 { left: 150px; } #s6-l2 { left: 700px; top: 600px; }
+    #s6-link { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    #s6-num { position: absolute; left: 700px; top: 700px; font-weight: 300; font-size: 150px; line-height: 1; letter-spacing: -0.03em; color: #06202C; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #s6-num span { display: inline-block; }
+    #s6-cap { position: absolute; left: 708px; top: 870px; font-weight: 500; font-size: 36px; color: rgb(6 32 44 / 0.66); }
+  </style>
+  <div data-hf-id="hf-7obi" id="root" data-composition-id="s6" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-bf72" id="s6-ground"></div>
+    <div data-hf-id="hf-8hx0" id="s6-dusk"></div>
+    <div data-hf-id="hf-lyrb" id="s6-win"></div>
+    <div data-hf-id="hf-tsp9" id="s6-row"></div>
+    <svg data-hf-id="hf-69fb" id="s6-link" viewBox="0 0 1920 1080" data-layout-ignore><path data-hf-id="hf-knlv" id="s6-path" d="M 552 330 C 700 330, 760 482, 884 482" fill="none" stroke="#55E6FF" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="100 120" stroke-dashoffset="110"/></svg>
+    <div data-hf-id="hf-rhdd" id="s6-phone">
+      <div data-hf-id="hf-iepb" id="s6-screen">
+        <div data-hf-id="hf-n0h4" id="s6-island"></div>
+        <div data-hf-id="hf-9rj5" class="s6-msg" id="s6-me"><div data-hf-id="hf-0mrk" id="s6-wave"><i data-hf-id="hf-qe0t" style="height:14px"></i><i data-hf-id="hf-cpi6" style="height:26px"></i><i data-hf-id="hf-myxn" style="height:38px"></i><i data-hf-id="hf-ht8a" style="height:22px"></i><i data-hf-id="hf-5zip" style="height:32px"></i><i data-hf-id="hf-0r1r" style="height:16px"></i><i data-hf-id="hf-gcjn" style="height:30px"></i><i data-hf-id="hf-0inm" style="height:40px"></i><i data-hf-id="hf-l168" style="height:20px"></i><i data-hf-id="hf-n1bc" style="height:28px"></i><i data-hf-id="hf-vg97" style="height:12px"></i><i data-hf-id="hf-fxg4" style="height:24px"></i><i data-hf-id="hf-d9fr" style="height:34px"></i><i data-hf-id="hf-nc1t" style="height:18px"></i><i data-hf-id="hf-c4qq" style="height:26px"></i><i data-hf-id="hf-bab9" style="height:36px"></i><i data-hf-id="hf-1l75" style="height:14px"></i></div></div>
+        <div data-hf-id="hf-62jf" class="s6-msg" id="s6-bot">Підготувала витрату: −45 USD · таксі · особисте. <b data-hf-id="hf-wv81">Підтвердь кнопкою.</b></div>
+      </div>
+    </div>
+    <div data-hf-id="hf-i6ka" class="s6-lbl" id="s6-l1">Telegram</div>
+    <div data-hf-id="hf-m7t4" class="s6-lbl" id="s6-l2">веб-кабінет</div>
+    <div data-hf-id="hf-2cc5" id="s6-num"><span data-hf-id="hf-5iz2">1,9–2,8</span> <span data-hf-id="hf-vmlc">с</span></div>
+    <div data-hf-id="hf-ooqz" id="s6-cap">від фрази до першого звуку відповіді</div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo('#s6-phone', { x: -640 }, { x: 0, duration: 0.75, ease: 'expo.out' }, 0);
+    tl.fromTo('#s6-l1', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.15 }, 0.25);
+    tl.fromTo('#s6-l2', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.15 }, 0.65);
+    tl.fromTo('#s6-me', { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'expo.out' }, 0.5);
+    tl.fromTo('#s6-wave i', { scaleY: 0.2 }, { scaleY: 1, duration: 0.3, stagger: 0.02, ease: 'expo.out' }, 0.55);
+    tl.fromTo('#s6-bot', { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'expo.out' }, 1.0);
+    // "один асистент, одна пам'ять": the same record, in both doors
+    tl.fromTo('#s6-path', { strokeDashoffset: 110 }, { strokeDashoffset: 0, duration: 0.7, ease: 'power2.inOut' }, 1.6);
+    tl.to('#s6-row', { opacity: 1, duration: 0.15 }, 2.25);
+    // "відповідає за дві-три секунди"
+    tl.fromTo('#s6-num span', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.18, stagger: 0.12, ease: 'power2.out' }, 4.6);
+    tl.fromTo('#s6-cap', { opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 4.8);
+    // dusk: everything but the phone leaves, the phone grows into the evening
+    tl.to(['#s6-num', '#s6-cap', '#s6-win', '#s6-row', '#s6-link', '#s6-l1', '#s6-l2'], { opacity: 0, filter: 'blur(10px)', duration: 0.25, stagger: 0.03 }, 6.4);
+    tl.to(['#s6-me', '#s6-bot'], { opacity: 0, duration: 0.2 }, 6.4);
+    tl.to('#s6-dusk', { opacity: 1, duration: 0.45, ease: 'power2.inOut' }, 6.45);
+    tl.to('#s6-phone', { y: -60, scale: 980 / 860, duration: 0.55, ease: 'power2.inOut' }, 6.45);
+    window.__timelines['s6'] = tl;
+  </script>
+</template>

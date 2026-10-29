@@ -1,0 +1,37 @@
+<template>
+  <style>
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-cyr.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'Manrope'; src: url('assets/fonts/manrope-lat.woff2') format('woff2'); font-weight: 200 800; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-cyr.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jbm-lat.woff2') format('woff2'); font-weight: 100 800; unicode-range: U+0000-00FF, U+2000-206F, U+2212; }
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: 'Manrope', sans-serif; background: #04090D; }
+    #s9-corewrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 960px 540px; }
+    #s9-core { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; -webkit-mask-image: radial-gradient(closest-side, #000 78%, transparent 100%); mask-image: radial-gradient(closest-side, #000 78%, transparent 100%); }
+    #s9-logo { position: absolute; left: 510px; top: 330px; width: 900px; height: 226px; background: url('assets/ai-insider-logo-light.png') center / 100% 100% no-repeat; }
+    #s9-cta { position: absolute; left: 0; right: 0; top: 650px; text-align: center; }
+    #s9-btn { display: inline-flex; align-items: center; height: 96px; padding: 0 48px; border-radius: 48px; border: 2px solid #4FE3FF; color: #F2F3F6; font-weight: 600; font-size: 40px; }
+    #s9-url { position: absolute; left: 0; right: 0; top: 790px; text-align: center; font-weight: 600; font-size: 52px; letter-spacing: -0.01em; color: #4FE3FF; }
+  </style>
+  <div data-hf-id="hf-dhfn" id="root" data-composition-id="s9" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-vdc0" id="s9-corewrap" data-layout-allow-overflow><video data-hf-id="hf-8f18" id="s9-core" class="clip" src="assets/video/core-s9.mp4" data-start="0" data-duration="7.4" data-track-index="2" muted playsinline></video></div>
+    <div data-hf-id="hf-b1vk" id="s9-logo" role="img" aria-label="AI Insider"></div>
+    <div data-hf-id="hf-49ts" id="s9-cta"><span data-hf-id="hf-9i8c" id="s9-btn">Обговорити проєкт</span></div>
+    <div data-hf-id="hf-ej6d" id="s9-url">aiinsider.it.com</div>
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    // the core is the cabinet's own 3D core (src/core-film.ts), baked to video frame by frame
+
+    // the core rises out of the dark, then folds into the AI Insider mark
+    tl.fromTo('#s9-corewrap', { scale: 0.08, x: 0, y: 0 }, { scale: 0.6, duration: 0.5, ease: 'expo.out' }, 0);
+    tl.to('#s9-corewrap', { scale: 0.42, x: 605 - 960, y: 443 - 540, duration: 0.45, ease: 'power2.inOut' }, 0.5);
+    tl.fromTo('#s9-logo', { opacity: 0, clipPath: 'inset(0% 79% 0% 0%)', scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'expo.out' }, 0.8);
+    tl.to('#s9-corewrap', { opacity: 0, duration: 0.3, ease: 'power3.in' }, 0.9);
+    tl.to('#s9-logo', { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.6, ease: 'power3.inOut' }, 1.0);
+    // the site's own call to action, then the address on the music's last hit
+    tl.fromTo('#s9-btn', { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 1.6);
+    tl.fromTo('#s9-url', { opacity: 0, filter: 'blur(10px)', scale: 1.08 }, { opacity: 1, filter: 'blur(0px)', scale: 1, duration: 0.25, ease: 'expo.out' }, 4.45);
+    window.__timelines['s9'] = tl;
+  </script>
+</template>
