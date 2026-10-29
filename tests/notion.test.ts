@@ -25,6 +25,31 @@ describe('schema discovery', () => {
     expect(s.priority?.name).toBe('Пріоритет');
     expect(s.notes?.name).toBe('Нотатки');
   });
+  it('maps a database without a project property (project = title prefix)', () => {
+    const sel = (...names: string[]) => ({ options: names.map((name) => ({ name })) });
+    const s = discoverTasksSchema({
+      id: 'mli',
+      properties: {
+        Завдання: { id: 'a', type: 'title' },
+        Статус: { id: 'b', type: 'select', select: sel('Очікує Founder', 'Заплановано', 'У роботі', 'Заблоковано', 'Завершено') },
+        Напрям: { id: 'c', type: 'select', select: sel('Стратегія', 'Продукт') },
+        Відповідальний: { id: 'd', type: 'select', select: sel('Founder', 'Dot') },
+        'Результат / джерело': { id: 'e', type: 'url' },
+        Оновлено: { id: 'f', type: 'last_edited_time' },
+        Термін: { id: 'g', type: 'date' },
+        Пріоритет: { id: 'h', type: 'select', select: sel('P1', 'P2') },
+        Примітка: { id: 'i', type: 'rich_text' },
+      },
+    });
+    expect(s.status).toMatchObject({ todo: 'Заплановано', doing: 'У роботі', done: 'Завершено' });
+    expect(s.project).toBeUndefined();
+    expect(s.projectFromTitle).toBe(true);
+    expect(s.notes?.name).toBe('Примітка');
+    expect(s.area?.name).toBe('Напрям');
+    expect(s.owner?.name).toBe('Відповідальний');
+    expect(s.result?.name).toBe('Результат / джерело');
+    expect(s.due?.name).toBe('Термін');
+  });
   it('fails loudly when there is no status-like property', () => {
     expect(() => discoverTasksSchema({ id: 'x', properties: { Name: { id: '1', type: 'title' } } })).toThrow(/status/i);
   });

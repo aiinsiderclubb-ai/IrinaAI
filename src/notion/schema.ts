@@ -13,7 +13,8 @@ export type PropType =
   | 'number'
   | 'checkbox'
   | 'relation'
-  | 'url';
+  | 'url'
+  | 'people';
 
 export interface PropRef {
   name: string;
@@ -36,6 +37,14 @@ export interface TasksSchema {
   due?: PropRef;
   priority?: PropRef;
   notes?: PropRef;
+  /** area / category of work (e.g. «Напрям»: Стратегія, Продукт…) */
+  area?: PropRef;
+  /** who does it (e.g. «Відповідальний»: Founder, Dot, Claude…) */
+  owner?: PropRef;
+  /** link to the result / source */
+  result?: PropRef;
+  /** no project property: the project is the title prefix before « · » (e.g. «MLI · Стратегія …») */
+  projectFromTitle?: boolean;
 }
 
 export interface DecisionsSchema {
@@ -139,20 +148,25 @@ export function discoverTasksSchema(db: NotionDatabaseMeta): TasksSchema {
   const options = optionNames(db, status);
   const statusRef: StatusRef = {
     ...status,
-    todo: pickOption(options, /not started|to.?do|backlog|нов|до викон|не розпоч/, options[0] ?? 'To do'),
+    todo: pickOption(options, /not started|to.?do|backlog|нов|до викон|не розпоч|заплан/, options[0] ?? 'To do'),
     doing: options.find((o) => /progress|doing|в роботі|у роботі|в процес/.test(lc(o))),
     done: pickOption(options, /^done$|complete|готов|викон|заверш|закрит|зроблен/, options[options.length - 1] ?? 'Done'),
   };
 
-  return {
+  const schema = {
     db: db.id,
     title,
     status: statusRef,
     project: findProp(db, ['relation', 'select', 'multi_select', 'rich_text'], /project|проєкт|проект/, used),
     due: findProp(db, ['date'], /due|deadline|дедлайн|термін|строк|date|дата/, used),
     priority: findProp(db, ['select', 'status', 'number'], /priority|пріоритет|приоритет/, used),
-    notes: findProp(db, ['rich_text'], /note|notes|опис|нотатк|коментар|description/, used),
-  };
+    notes: findProp(db, ['rich_text'], /note|notes|опис|нотатк|примітк|коментар|description/, used),
+    area: findProp(db, ['select', 'multi_select'], /напрям|категор|area|category|тип|type/, used),
+    owner: findProp(db, ['select', 'people', 'rich_text'] as PropType[], /відповідал|виконав|owner|assignee|хто/, used),
+    result: findProp(db, ['url'], /результат|джерело|result|link|посилан/, used),
+  } as TasksSchema;
+  if (!schema.project) schema.projectFromTitle = true;
+  return schema;
 }
 
 /** Project names the client already uses (select options or titles of the relation DB are resolved elsewhere). */

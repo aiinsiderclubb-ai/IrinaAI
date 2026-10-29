@@ -75,13 +75,16 @@ async function normDue(s: Services, due?: string): Promise<string | undefined> {
   return parseLocal(due, zone).toISO()!;
 }
 
-const toTaskView = (t: { id: string; title: string; project?: string; status: string; due?: string; priority?: string }) => ({
+const toTaskView = (t: { id: string; title: string; project?: string; status: string; due?: string; priority?: string; area?: string; owner?: string; notes?: string }) => ({
   id: t.id,
   title: t.title,
   project: t.project,
   status: t.status,
   due: t.due,
   priority: t.priority,
+  area: t.area,
+  owner: t.owner,
+  note: t.notes?.slice(0, 200),
 });
 
 const accountEnum = z.enum(['work', 'personal']);

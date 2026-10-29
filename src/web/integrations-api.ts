@@ -157,7 +157,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
   });
 
   /** Read-only setup: map the existing tasks database, pick pages read into the prompt. Creates nothing in Notion. */
-  app.post<{ Body: { tasksDb?: string; contextPages?: string[]; importProjects?: boolean } }>('/api/integrations/notion/configure', async (req, reply) => {
+  app.post<{ Body: { tasksDb?: string; contextPages?: string[]; importProjects?: boolean; projects?: string[] } }>('/api/integrations/notion/configure', async (req, reply) => {
     if (!s.notionApi) return reply.code(400).send({ error: 'Спершу додайте токен Notion' });
     const tasksDb = String(req.body?.tasksDb ?? '').trim();
     const contextPages = (req.body?.contextPages ?? []).map(String).slice(0, 5);
@@ -165,15 +165,22 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
       const meta = await s.notionApi.request<NotionDatabaseMeta>('GET', `/v1/databases/${tasksDb}`);
       const tasks = discoverTasksSchema(meta);
       const st = await s.settings.get();
-      const projects = req.body?.importProjects !== false ? projectOptions(meta, tasks.project) : [];
+      const repo = new NotionRepo(s.notionApi, { tasks });
+      const given = (req.body?.projects ?? []).map((p) => String(p).trim()).filter(Boolean).slice(0, 30);
+      let projects = given;
+      if (!projects.length && req.body?.importProjects !== false) {
+        projects = projectOptions(meta, tasks.project);
+        // no project property: the client's projects are the title prefixes («MLI · …») of existing tasks
+        if (!projects.length && tasks.projectFromTitle) projects = [...new Set((await repo.queryTasks({ limit: 100 })).map((t) => t.project).filter((p): p is string => !!p))];
+      }
       await s.settings.update({
         notion: { ...st.notion, tasks },
         notionContextPages: contextPages,
-        ...(projects.length && !st.projects.length ? { projects } : {}),
+        ...(projects.length && (given.length || !st.projects.length) ? { projects } : {}),
       });
       await store.patch('notion', { tasksDb, contextPages });
       await apply();
-      const sample = await new NotionRepo(s.notionApi, { tasks }).queryTasks({ open: true, limit: 5 });
+      const sample = await repo.queryTasks({ open: true, limit: 5 });
       return { mapping: tasks, projects: projects.length ? projects : st.projects, sample, view: await view() };
     } catch (e) {
       return reply.code(400).send({ error: errMsg(e).slice(0, 300) });

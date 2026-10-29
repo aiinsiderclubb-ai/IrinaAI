@@ -3,6 +3,7 @@ import { api, ApiError } from '../api';
 import type { Memory, Settings } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 import { Connections } from './Connections';
+import { useTheme, type ThemeChoice } from '../theme';
 
 const WEEKDAYS = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
 
@@ -55,6 +56,8 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
           Вийти
         </button>
       </div>
+
+      <Appearance />
 
       <Connections />
 
@@ -296,6 +299,31 @@ function VoicePicker({ form, set }: { form: Settings; set: <K extends keyof Sett
         {eleven
           ? 'ElevenLabs, носії української. Живу розмову озвучує швидка модель, голосові в Telegram і брифінги — якісна; голос той самий.'
           : 'Голос використовується в Telegram, ядрі та брифінгах. Найбільш людяний варіант — ElevenLabs (потрібен ключ).'}
+      </div>
+    </section>
+  );
+}
+
+const THEMES: { id: ThemeChoice; label: string }[] = [
+  { id: 'auto', label: 'Як у системі' },
+  { id: 'light', label: 'Світла' },
+  { id: 'dark', label: 'Темна' },
+];
+
+function Appearance() {
+  const { choice, set } = useTheme();
+  return (
+    <section className="card card-pad appearance">
+      <div>
+        <h2>Оформлення</h2>
+        <p className="muted">Запам’ятовується на цьому пристрої.</p>
+      </div>
+      <div className="seg" role="radiogroup" aria-label="Тема">
+        {THEMES.map((t) => (
+          <button key={t.id} type="button" role="radio" aria-checked={choice === t.id} className={choice === t.id ? 'on' : ''} onClick={() => set(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
     </section>
   );

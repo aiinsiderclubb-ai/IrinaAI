@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
-import { IconLogo, IconMoney, IconOrb, IconSettings, IconTasks, IconToday } from './icons';
+import { IconLogo, IconMoney, IconMoon, IconOrb, IconSettings, IconSun, IconTasks, IconToday } from './icons';
+import { useTheme } from './theme';
 import { Finance } from './screens/Finance';
 import { Login } from './screens/Login';
 import { SettingsScreen } from './screens/Settings';
@@ -85,6 +86,9 @@ export function App() {
               {path === 'day' && pending > 0 && <span className="nav-badge">{pending}</span>}
             </a>
           ))}
+          <div className="side-foot">
+            <ThemeToggle />
+          </div>
         </nav>
         <main className={current === 'core' ? 'main main-full' : 'main'}>
           {current === 'core' && (
@@ -99,5 +103,15 @@ export function App() {
         </main>
       </div>
     </ToastHost>
+  );
+}
+
+function ThemeToggle() {
+  const { resolved, set } = useTheme();
+  const next = resolved === 'light' ? 'dark' : 'light';
+  return (
+    <button className="nav-item theme-toggle" onClick={() => set(next)} title={next === 'light' ? 'Світла тема' : 'Темна тема'} aria-label={next === 'light' ? 'Увімкнути світлу тему' : 'Увімкнути темну тему'}>
+      {resolved === 'light' ? <IconMoon /> : <IconSun />}
+    </button>
   );
 }

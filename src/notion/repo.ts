@@ -7,6 +7,9 @@ export interface Task {
   id: string;
   title: string;
   project?: string;
+  area?: string;
+  owner?: string;
+  result?: string;
   status: string;
   done: boolean;
   /** ISO date or datetime */
@@ -165,10 +168,17 @@ export class NotionRepo {
     const done = s.status.type === 'checkbox' ? status === true : status === s.status.done;
     const due = readProp(s.due, page) as { start: string } | undefined;
     const priority = readProp(s.priority, page);
+    const title = readProp(s.title, page) as string;
+    const prefix = s.projectFromTitle && title.includes(' · ') ? title.split(' · ')[0]!.trim() : undefined;
+    const area = readProp(s.area, page);
+    const owner = readProp(s.owner, page);
     return {
       id: page.id,
-      title: readProp(s.title, page) as string,
-      project: await this.projectOf(s.project, page),
+      title,
+      project: s.project ? await this.projectOf(s.project, page) : prefix,
+      area: Array.isArray(area) ? area.join(', ') : area || undefined,
+      owner: Array.isArray(owner) ? owner.join(', ') : owner || undefined,
+      result: readProp(s.result, page) || undefined,
       status: s.status.type === 'checkbox' ? (done ? s.status.done : s.status.todo) : String(status ?? s.status.todo),
       done,
       due: due?.start,
@@ -188,6 +198,7 @@ export class NotionRepo {
       and.push({ timestamp: 'last_edited_time', last_edited_time: { on_or_after: q.doneSince } });
     }
     if (q.project && s.project) and.push(await this.projectFilter(s.project, q.project));
+    else if (q.project && s.projectFromTitle) and.push({ property: s.title.name, title: { contains: q.project } });
     if (q.dueOnOrBefore && s.due) and.push({ property: s.due.name, date: { on_or_before: q.dueOnOrBefore } });
     if (q.dueOn && s.due) and.push({ property: s.due.name, date: { equals: q.dueOn } });
     if (q.text) and.push({ property: s.title.name, title: { contains: q.text } });
@@ -208,7 +219,8 @@ export class NotionRepo {
   private async taskProps(input: Partial<TaskInput>): Promise<Record<string, any>> {
     const s = this.schema.tasks;
     const props: Record<string, any> = {};
-    if (input.title !== undefined) props[s.title.name] = writeProp(s.title, input.title);
+    const titled = input.title !== undefined && input.project && s.projectFromTitle && !input.title.startsWith(`${input.project} · `) ? `${input.project} · ${input.title}` : input.title;
+    if (titled !== undefined) props[s.title.name] = writeProp(s.title, titled);
     if (input.project && s.project) props[s.project.name] = writeProp(s.project, await this.projectValue(s.project, input.project));
     if (input.due !== undefined && s.due) props[s.due.name] = writeProp(s.due, input.due);
     if (input.priority && s.priority) props[s.priority.name] = writeProp(s.priority, input.priority);

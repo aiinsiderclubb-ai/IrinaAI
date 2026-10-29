@@ -28,6 +28,8 @@ export function readProp(ref: PropRef | undefined, page: any): any {
       return (p.relation ?? []).map((r: any) => r.id as string);
     case 'url':
       return p.url ?? undefined;
+    case 'people':
+      return (p.people ?? []).map((u: any) => u.name ?? u.id);
   }
 }
 
