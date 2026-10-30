@@ -12,6 +12,7 @@ import { buildEveningReport, buildMorningReport } from '../modules/reports.js';
 import { toOggOpus, plainForSpeech } from '../integrations/tts.js';
 import { esc, type Services } from '../services.js';
 import type { PendingAction } from '../store/pending.js';
+import { TelegramAccess } from '../store/telegram-access.js';
 
 const TG_LIMIT = 4000;
 const VOICE_MAX_CHARS = 900;
@@ -68,17 +69,38 @@ export function createBot(s: Services, agent: Agent): Bot {
     return new Uint8Array(await res.arrayBuffer());
   };
 
-  s.notify = async (html) => {
-    for (const part of chunk(html)) await bot.api.sendMessage(ownerId, part, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+  const access = new TelegramAccess(s.db, ownerId);
+
+  const sendHtml = async (chatId: number, html: string) => {
+    for (const part of chunk(html)) await bot.api.sendMessage(chatId, part, { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
   };
 
-  // Private bot: ignore everyone except the owner (the only authentication there is).
-  bot.use(async (ctx, next) => {
-    if (ctx.from?.id !== ownerId) {
-      s.log.warn('rejected_non_owner', { fromId: ctx.from?.id });
-      return;
+  // reports and alerts: the owner plus the people the owner allowed to receive them
+  s.notify = async (html) => {
+    for (const chatId of await access.recipients()) {
+      try {
+        await sendHtml(chatId, html);
+      } catch (e) {
+        if (chatId === ownerId) throw e;
+        s.log.warn('notify_failed', { chatId, error: errMsg(e).slice(0, 200) });
+      }
     }
-    await next();
+  };
+
+  // Private bot: only the owner and the people she allowed in the cabinet (Опції → Підключення → Telegram).
+  bot.use(async (ctx, next) => {
+    const from = ctx.from;
+    if (await access.isAllowed(from?.id)) return next();
+    s.log.warn('rejected_non_owner', { fromId: from?.id });
+    // private chats only: say once how to get access, never in groups
+    if (from && ctx.chat?.type === 'private') {
+      const name = [from.first_name, from.last_name].filter(Boolean).join(' ');
+      if (await access.request({ id: from.id, name, username: from.username }, s.clock())) {
+        await ctx
+          .reply(`Цей асистент приватний. Ваш Telegram ID: ${from.id}.\nВласник може надати доступ у веб-кабінеті: Опції → Підключення → Telegram.`)
+          .catch(() => {});
+      }
+    }
   });
 
   // ---------- rendering ----------
@@ -190,8 +212,8 @@ export function createBot(s: Services, agent: Agent): Bot {
     await ctx.reply(lines.join('\n'));
   });
 
-  bot.command('morning', async (ctx) => void (await s.notify(await buildMorningReport(s))));
-  bot.command('evening', async (ctx) => void (await s.notify(await buildEveningReport(s))));
+  bot.command('morning', async (ctx) => sendHtml(ctx.chat.id, await buildMorningReport(s)));
+  bot.command('evening', async (ctx) => sendHtml(ctx.chat.id, await buildEveningReport(s)));
   bot.command('plan', (ctx) => ask(ctx.chat.id, 'Склади план мого дня на сьогодні за вільним часом.', false));
   bot.command('metrics', (ctx) => ask(ctx.chat.id, 'Покажи метрики Instagram і YouTube.', false));
   bot.command('events', (ctx) => ask(ctx.chat.id, 'Знайди події за моїми темами.', false));

@@ -12,6 +12,7 @@ import { NotionRepo } from '../notion/repo.js';
 import { discoverTasksSchema, projectOptions, type NotionDatabaseMeta } from '../notion/schema.js';
 import type { Services } from '../services.js';
 import { mask, type CustomIntegration, type IntegrationConfig } from '../store/integrations.js';
+import { TelegramAccess } from '../store/telegram-access.js';
 
 const httpsUrl = (dev: boolean) =>
   z
@@ -285,5 +286,36 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
   app.delete<{ Params: { id: string } }>('/api/integrations/custom/:id', async (req) => {
     await store.removeCustom(req.params.id);
     return view();
+  });
+
+  // ---------- Telegram: who besides the owner may talk to the bot ----------
+
+  const access = new TelegramAccess(s.db, ownerId);
+  const accessView = async () => ({ ownerId, ...(await access.list()) });
+  const tgId = z.coerce.number().int().positive();
+
+  app.get('/api/integrations/telegram', async () => accessView());
+
+  app.post('/api/integrations/telegram', async (req, reply) => {
+    const parsed = z.object({ id: tgId, name: z.string().trim().max(60).default(''), reports: z.boolean().default(false) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Потрібен числовий Telegram ID' });
+    if (parsed.data.id === ownerId) return reply.code(400).send({ error: 'Це вже власник' });
+    await access.allow(parsed.data);
+    return accessView();
+  });
+
+  app.patch<{ Params: { id: string } }>('/api/integrations/telegram/:id', async (req, reply) => {
+    const id = tgId.safeParse(req.params.id);
+    const body = z.object({ name: z.string().trim().min(1).max(60).optional(), reports: z.boolean().optional() }).safeParse(req.body);
+    if (!id.success || !body.success) return reply.code(400).send({ error: 'bad request' });
+    if (!(await access.update(id.data, body.data))) return reply.code(404).send({ error: 'not found' });
+    return accessView();
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/integrations/telegram/:id', async (req, reply) => {
+    const id = tgId.safeParse(req.params.id);
+    if (!id.success) return reply.code(400).send({ error: 'bad request' });
+    await access.remove(id.data);
+    return accessView();
   });
 }

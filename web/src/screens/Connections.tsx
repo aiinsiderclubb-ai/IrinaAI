@@ -105,6 +105,7 @@ function ConnectionsBody({ view, setView }: { view: View; setView: (v: View) => 
           <NotionSection view={view} setView={setView} />
           <GoogleSection view={view} busy={busy} run={run} />
           <MetaSection view={view} busy={busy} run={run} />
+          <TelegramSection />
           <KeySection
             title="Голос (ElevenLabs)"
             hint="Найбільш людяні голоси. Без ключа — голос OpenAI"
@@ -129,6 +130,118 @@ function ConnectionsBody({ view, setView }: { view: View; setView: (v: View) => 
       </section>
       <CustomSection view={view} busy={busy} run={run} />
     </>
+  );
+}
+
+// ---------- Telegram: who may talk to the bot ----------
+
+interface TgUser {
+  id: number;
+  name: string;
+  reports: boolean;
+}
+interface TgAccess {
+  ownerId: number;
+  allowed: TgUser[];
+  requests: Array<{ id: number; name: string; username?: string; at: string }>;
+}
+
+function TelegramSection() {
+  const toast = useToast();
+  const [data, setData] = useState<TgAccess | null>(null);
+  const [id, setId] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = () => api.get<TgAccess>('/api/integrations/telegram').then(setData, () => {});
+  useEffect(() => void load(), []);
+  const act = async (fn: () => Promise<TgAccess>, ok?: string) => {
+    setBusy(true);
+    try {
+      setData(await fn());
+      if (ok) toast(ok);
+      return true;
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : String(e));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const allow = (body: { id: number; name: string }) => act(() => api.post<TgAccess>('/api/integrations/telegram', { ...body, reports: false }), 'Доступ надано');
+  const extra = data?.allowed.length ?? 0;
+  return (
+    <Section title="Telegram · доступ" hint="Хто ще може писати боту, окрім власника" right={<Pill state="on" label={extra ? `+${extra}` : 'лише власник'} />}>
+      {!data ? (
+        <div className="muted">Завантаження…</div>
+      ) : (
+        <>
+          <div className="muted">
+            Власник: {data.ownerId}. Додані люди бачать ті самі дані й можуть підтверджувати дії. Хто напише боту без доступу, зʼявиться нижче.
+          </div>
+          {data.requests.length > 0 && (
+            <ul className="steps" style={{ marginTop: 10 }}>
+              {data.requests.map((r) => (
+                <li key={r.id}>
+                  <div className="row">
+                    <span className="grow">
+                      <b>{r.name || 'Без імені'}</b>
+                      {r.username ? ` @${r.username}` : ''} <span className="muted">· ID {r.id} · {new Date(r.at).toLocaleString('uk-UA')}</span>
+                    </span>
+                    <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void allow({ id: r.id, name: r.name })}>
+                      Дозволити
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void act(() => api.del<TgAccess>(`/api/integrations/telegram/${r.id}`))}>
+                      Відхилити
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.allowed.length > 0 && (
+            <ul className="steps" style={{ marginTop: 10 }}>
+              {data.allowed.map((u) => (
+                <li key={u.id}>
+                  <div className="row">
+                    <span className="grow">
+                      <b>{u.name}</b> <span className="muted">· ID {u.id}</span>
+                    </span>
+                    <label className="toggle">
+                      <input type="checkbox" checked={u.reports} disabled={busy} onChange={(e) => void act(() => api.patch<TgAccess>(`/api/integrations/telegram/${u.id}`, { reports: e.target.checked }))} />
+                      звіти й нагадування
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      disabled={busy}
+                      onClick={() => confirm(`Забрати доступ у ${u.name}?`) && void act(() => api.del<TgAccess>(`/api/integrations/telegram/${u.id}`), 'Доступ забрано')}
+                    >
+                      Забрати
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="form-grid" style={{ padding: '10px 0 0' }}>
+            <Field label="Telegram ID">
+              <input className="input" inputMode="numeric" value={id} onChange={(e) => setId(e.target.value.replace(/\D/g, ''))} placeholder="напр. 123456789" />
+            </Field>
+            <Field label="Імʼя">
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+          </div>
+          <div className="row">
+            <button type="button" className="btn btn-primary btn-sm" disabled={!id || busy} onClick={() => void allow({ id: Number(id), name }).then((ok) => ok && (setId(''), setName('')))}>
+              Додати
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void load()}>
+              Оновити
+            </button>
+          </div>
+        </>
+      )}
+    </Section>
   );
 }
 
