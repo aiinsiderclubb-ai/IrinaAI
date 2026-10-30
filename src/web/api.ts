@@ -82,7 +82,7 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   const { cfg } = s;
   const ownerId = cfg.OWNER_TELEGRAM_ID;
   const limiter = new AttemptLimiter();
-  const voiceAgent = new Agent(s, buildVoiceTools(), 'voice', { name: cfg.OPENAI_VOICE_MODEL, maxTokens: 400 });
+  const voiceAgent = new Agent(s, buildVoiceTools(), 'voice', { name: cfg.OPENAI_VOICE_MODEL || cfg.OPENAI_MODEL, maxTokens: 400, effort: 'none' });
   const speech = async (text: string): Promise<string | undefined> => {
     if (!s.tts || !text) return undefined;
     try {
@@ -440,7 +440,7 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
     const state = (sl: string) => signState({ slot: sl, owner: String(ownerId) }, cfg.APP_SECRET);
     return {
       integrations: {
-        notion: { state: !cfg.NOTION_TOKEN ? 'off' : st.notion ? 'on' : 'setup' },
+        notion: { state: !s.notionApi ? 'off' : st.notion ? 'on' : 'setup' },
         work: { ...(await slot('google:work')), connectUrl: s.googleAuth?.authUrl('google:work', state('google:work')) },
         personal: { ...(await slot('google:personal')), connectUrl: s.googleAuth?.authUrl('google:personal', state('google:personal')) },
         youtube: { ...(await slot('google:youtube')), connectUrl: s.googleAuth?.authUrl('google:youtube', state('google:youtube')) },

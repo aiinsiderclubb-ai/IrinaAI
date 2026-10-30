@@ -29,7 +29,8 @@ const schema = z.object({
   /** thinking depth for gpt-5.x / gpt-6.x / o-series models */
   OPENAI_REASONING_EFFORT: z.enum(['minimal', 'low', 'medium', 'high']).default('low'),
   /** spoken conversation: a faster model and transcription, latency matters more than nuance */
-  OPENAI_VOICE_MODEL: z.string().default('gpt-4.1-mini'),
+  /** live voice answers; unset = the same smart model as chat (a faster, weaker one made voice answers generic) */
+  OPENAI_VOICE_MODEL: z.string().optional(),
   OPENAI_VOICE_TRANSCRIBE_MODEL: z.string().default('gpt-4o-transcribe'),
   /** live voice dialog in the web cabinet (speech-to-speech) */
   OPENAI_REALTIME_MODEL: z.string().default('gpt-realtime'),

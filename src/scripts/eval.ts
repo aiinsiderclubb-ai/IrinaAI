@@ -138,6 +138,11 @@ const CASES: Case[] = [
   // --- the owner is a woman
   { id: 'gender-rest', group: 'gender', say: 'я сьогодні все зробила, можна вже відпочити?', check: (o) => notSays(o, MASC) },
   { id: 'gender-tired', group: 'gender', say: 'я видихлась', check: (o) => all(notSays(o, MASC), noCards(o)) },
+  // live voice must use the owner's real data, not answer like a generic chatbot (Irina's complaint 30.10)
+  { id: 'voice-tasks', group: 'voice-smart', agent: 'voice', say: 'розказуй коротко про таски', check: (o) => all(says(o, /юрист|презентац|бюджет|лендинг|дизайнер/i), notSays(o, /бувають короткі|різні таски|головне, щоб кожна/i)) },
+  { id: 'voice-day', group: 'voice-smart', agent: 'voice', say: 'пройдемо день', check: (o) => says(o, /стендап|фонд|стоматолог|рев.ю|тренуван|юрист|презентац|бюджет/i) },
+  { id: 'voice-priority', group: 'voice-smart', agent: 'voice', say: 'що мені зараз найважливіше зробити?', check: (o) => says(o, /юрист|презентац|бюджет|прострочен/i) },
+  { id: 'voice-waiting', group: 'voice-smart', agent: 'voice', say: 'від кого я чекаю відповіді?', check: (o) => says(o, /олен|андрі|nda|фідбек/i) },
   { id: 'gender-voice', group: 'gender', agent: 'voice', say: 'ну все, на сьогодні я все', check: (o) => notSays(o, MASC) },
   { id: 'russian-input', group: 'manner', say: 'добавь задачу позвонить бухгалтеру завтра', check: (o) => all(expectKinds(o, ['task.create']), ukrainian(o)) },
 ];
@@ -197,7 +202,7 @@ async function runCase(c: Case, llm: OpenAi): Promise<{ ok: boolean; why?: strin
     for (const [role, text] of c.history ?? []) await s.messages.add(1, role, text);
     await c.setup?.(s);
     const t0 = Date.now();
-    const agent = c.agent === 'voice' ? new Agent(s, buildVoiceTools(), 'voice', { maxTokens: 400 }) : new Agent(s);
+    const agent = c.agent === 'voice' ? new Agent(s, buildVoiceTools(), 'voice', { maxTokens: 400, effort: 'none' }) : new Agent(s);
     const r = await agent.handle(1, c.say);
     const ms = Date.now() - t0;
     const outcome: Outcome = { text: r.text, proposals: r.proposals.map((p) => ({ kind: p.kind, payload: p.payload, summary: p.summary })), tools: rec.tools, s };

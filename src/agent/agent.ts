@@ -196,7 +196,7 @@ export class Agent {
     tools: Tool[] = buildTools(),
     private mode: 'text' | 'voice' = 'text',
     /** voice: faster model, short answers */
-    private model?: { name?: string; maxTokens?: number },
+    private model?: { name?: string; maxTokens?: number; effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' },
   ) {
     this.tools = tools;
   }
@@ -221,7 +221,7 @@ export class Agent {
     let text = '';
     for (let step = 0; step < MAX_STEPS; step++) {
       // a bit more variety than the 0.2 default: replies should not sound templated
-      const res = await s.llm.chat({ messages, tools: specs, model: this.model?.name, maxTokens: this.model?.maxTokens, temperature: 0.6, onText });
+      const res = await s.llm.chat({ messages, tools: specs, model: this.model?.name, maxTokens: this.model?.maxTokens, effort: this.model?.effort, temperature: 0.6, onText });
       if (!res.toolCalls.length) {
         text = (res.content ?? '').trim();
         break;

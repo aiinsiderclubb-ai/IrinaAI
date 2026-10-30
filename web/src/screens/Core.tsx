@@ -8,6 +8,7 @@ import type { Proposal, Settings, Today } from '../types';
 import { ProposalCard, useLoad, useToast } from '../ui';
 import { StreamPlayer, streamTurn } from '../voice/stream';
 import { StandardVoice } from '../voice/pipeline';
+import { voiceChannel } from '../voice/channel';
 import { RealtimeVoice } from '../voice/realtime';
 import { RealtimeUnavailable, type VoiceEngine, type VoiceHandlers, type VoiceStatus } from '../voice/types';
 
@@ -135,7 +136,7 @@ export function Core({ onChanged }: { onChanged: () => void }) {
       await e.start();
     };
     try {
-      if (realtimeBlocked()) await run(new StandardVoice(handlers, handsFree));
+      if (voiceChannel() === 'smart' || realtimeBlocked()) await run(new StandardVoice(handlers, handsFree));
       else {
         try {
           await run(new RealtimeVoice(handlers, handsFree));
@@ -256,7 +257,7 @@ export function Core({ onChanged }: { onChanged: () => void }) {
           <span className="core-name">{name}</span>
           <span className="core-state">
             <i className="core-dot" /> {caption}
-            {engine && active && <em>{engine.kind === 'realtime' ? ' · миттєвий канал' : ' · стандартний канал'}</em>}
+            {engine && active && <em>{engine.kind === 'realtime' ? ' · миттєвий канал' : ''}</em>}
           </span>
         </div>
         <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>

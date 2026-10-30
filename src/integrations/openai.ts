@@ -34,6 +34,8 @@ export interface ChatArgs {
   /** override the default chat model (voice uses a faster one) */
   model?: string;
   maxTokens?: number;
+  /** override the reasoning effort (live voice thinks less to answer sooner) */
+  effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
   /** stream the answer: called with each text fragment as it is generated */
   onText?: (delta: string) => void;
 }
@@ -153,7 +155,7 @@ export class OpenAi implements Llm {
       input,
       store: false,
       include: ['reasoning.encrypted_content'],
-      reasoning: { effort: this.reasoningEffort },
+      reasoning: { effort: args.effort ?? this.reasoningEffort },
       ...(args.maxTokens ? { max_output_tokens: Math.max(args.maxTokens, 800) } : {}),
       ...(args.tools?.length ? { tools: args.tools.map((t) => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters, strict: false })) } : {}),
       ...(args.json ? { text: { format: { type: 'json_object' } } } : {}),

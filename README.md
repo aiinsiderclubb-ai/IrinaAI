@@ -69,12 +69,15 @@ Code: `src/web/*` (API + auth), `web/` (React + Vite SPA, built into `dist/publi
 
 Screen **Голос**: a spoken conversation with the assistant (own name, informal «ти», personality in the prompt).
 
-* **Instant mode** — OpenAI Realtime (`gpt-realtime`) over WebRTC: sub-second replies, interrupt any time. The browser gets a
+* **Smart mode (default)** — the same agent as chat and Telegram (tools, Notion, memory, history), see *Standard mode* below.
+  Chosen per device in Settings → Голос → «Голосовий канал на сайті».
+* **Instant mode** (opt-in) — OpenAI Realtime (`gpt-realtime`) over WebRTC: sub-second replies, interrupt any time. The browser gets a
   10-minute ephemeral key from `/api/realtime/session`; tools run on our server via `/api/realtime/tool`.
+  Faster, but a weaker model: it seldom looks at the owner's data and does not see the chat history.
   Needs Realtime model access in the client's OpenAI project (Settings → Limits → model access).
-* **Standard mode** — automatic fallback when Realtime is not available: voice-activity detection in the browser →
-  `/api/voice/stream` (NDJSON). Speech is transcribed, the answer comes from a faster model (`OPENAI_VOICE_MODEL`,
-  default `gpt-4.1-mini`) as a stream, each finished sentence is synthesised right away as streamed PCM
+* **Standard mode** — the default (and the fallback when Realtime is not available): voice-activity detection in the browser →
+  `/api/voice/stream` (NDJSON). Speech is transcribed, the answer comes from the chat model (`OPENAI_MODEL`; override with
+  `OPENAI_VOICE_MODEL`) as a stream, each finished sentence is synthesised right away as streamed PCM
   (`gpt-4o-mini-tts` or ElevenLabs `pcm_24000`) and played in the browser while the rest is still being written.
   A compact picture of today is in the voice prompt, so "what's next?" needs one model round, not two.
   Measured on the client's key: first sound 1.9–2.8 s after the phrase ends (was 5 s; long answers up to 56 s). Barge-in supported.

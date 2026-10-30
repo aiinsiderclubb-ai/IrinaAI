@@ -4,6 +4,7 @@ import type { Memory, Settings } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 import { Connections } from './Connections';
 import { useTheme, type ThemeChoice } from '../theme';
+import { setVoiceChannel, voiceChannel, type VoiceChannel } from '../voice/channel';
 
 const WEEKDAYS = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
 
@@ -295,12 +296,45 @@ function VoicePicker({ form, set }: { form: Settings; set: <K extends keyof Sett
           </div>
         </div>
       }
+      <VoiceChannelPick />
       <div className="empty" style={{ paddingTop: 0 }}>
         {eleven
           ? 'ElevenLabs, носії української. Живу розмову озвучує швидка модель, голосові в Telegram і брифінги — якісна; голос той самий.'
           : 'Голос використовується в Telegram, ядрі та брифінгах. Найбільш людяний варіант — ElevenLabs (потрібен ключ).'}
       </div>
     </section>
+  );
+}
+
+const CHANNELS: { id: VoiceChannel; label: string }[] = [
+  { id: 'smart', label: 'Розумний' },
+  { id: 'instant', label: 'Миттєвий' },
+];
+
+function VoiceChannelPick() {
+  const [ch, setCh] = useState<VoiceChannel>(voiceChannel);
+  const pick = (c: VoiceChannel) => {
+    setVoiceChannel(c);
+    setCh(c);
+  };
+  return (
+    <div className="appearance" style={{ padding: '4px 22px 14px' }}>
+      <div>
+        <div className="field-label">Голосовий канал на сайті</div>
+        <p className="muted">
+          {ch === 'smart'
+            ? 'Той самий «мозок», що в чаті й Telegram: бачить задачі, календар, пам’ять. Відповідь за 2–3 с.'
+            : 'Відповідь майже миттєва, але модель простіша: рідше заглядає в задачі й не бачить історію чату.'}
+        </p>
+      </div>
+      <div className="seg" role="radiogroup" aria-label="Голосовий канал">
+        {CHANNELS.map((c) => (
+          <button key={c.id} type="button" role="radio" aria-checked={ch === c.id} className={ch === c.id ? 'on' : ''} onClick={() => pick(c.id)}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
