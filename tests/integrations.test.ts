@@ -204,3 +204,56 @@ describe('live reconfigure', () => {
     expect(env.s.tts?.constructor.name).toBe('ElevenLabs');
   });
 });
+
+describe('Instagram via Facebook Login (business portfolio access)', () => {
+  it('builds the Facebook dialog, finds the account through the portfolio and reads stats from graph.facebook.com', async () => {
+    const { env, app, H } = await setup();
+    const res = await app.inject({ method: 'PUT', url: '/api/integrations/meta', headers: H, payload: { appId: '1234567890', appSecret: 'meta-secret-xyz' } });
+    expect(res.statusCode).toBe(200);
+    const v = res.json();
+    expect(v.meta.login).toBe('facebook');
+    const auth = new URL(v.meta.instagram.connectUrl);
+    expect(auth.host).toBe('www.facebook.com');
+    expect(auth.searchParams.get('scope')).toContain('instagram_manage_insights');
+
+    const calls = mockFetch([
+      ['/oauth/access_token', () => ({ access_token: calls.length === 1 ? 'SHORT' : 'LONG', expires_in: 5_184_000 })],
+      ['/me/accounts', () => ({ data: [{ name: 'Page without IG', access_token: 'PAGE' }] })],
+      ['/me/businesses', () => ({ data: [{ id: 'BIZ1', name: 'Ирина Громова' }] })],
+      ['/BIZ1/instagram_business_accounts', () => ({ data: [{ id: '1784', username: 'irina.gromova' }] })],
+      ['/BIZ1/', () => new Response('{"error":{"message":"no role"}}', { status: 403 })],
+      ['/1784/insights', () => ({ data: [{ total_value: { value: 1200 } }] })],
+      ['/1784/media', () => ({ data: [{ id: 'M1', caption: 'Пост\nдалі', permalink: 'https://instagram.com/p/1', timestamp: '2026-10-29T10:00:00Z', like_count: 40, comments_count: 3 }] })],
+      ['/M1/insights', () => ({ data: [{ name: 'reach', values: [{ value: 900 }] }] })],
+      ['/1784?', () => ({ username: 'irina.gromova', followers_count: 15000, follows_count: 300, media_count: 520 })],
+    ]);
+    await env.s.instagram!.exchangeCode('CODE');
+    const t = await env.s.tokens.get('instagram');
+    expect(t?.meta).toMatchObject({ login: 'facebook', userId: '1784', username: 'irina.gromova' });
+    expect(t?.accessToken).toBe('LONG');
+    expect(t?.expiresAt).toBeInstanceOf(Date);
+    expect(calls.some((c) => c.url.includes('fb_exchange_token=SHORT'))).toBe(true);
+
+    const snap = await env.s.instagram!.snapshot(7);
+    expect(snap).toMatchObject({ account: 'irina.gromova', totals: { followers: 15000 }, period: { reach: 1200 } });
+    expect(snap.posts[0]).toMatchObject({ title: 'Пост', metrics: { likes: 40, reach: 900 } });
+    expect(calls.filter((c) => c.url.includes('graph.instagram.com'))).toHaveLength(0);
+    expect((await app.inject({ method: 'GET', url: '/api/integrations', headers: H })).json().meta.instagram).toMatchObject({ state: 'on', username: 'irina.gromova' });
+  });
+
+  it('prefers a Page token, which does not expire', async () => {
+    const { env, app, H } = await setup();
+    await app.inject({ method: 'PUT', url: '/api/integrations/meta', headers: H, payload: { appId: '1234567890', appSecret: 'meta-secret-xyz', configId: '998877' } });
+    expect(new URL((await app.inject({ method: 'GET', url: '/api/integrations', headers: H })).json().meta.instagram.connectUrl).searchParams.get('config_id')).toBe('998877');
+    mockFetch([
+      ['/oauth/access_token', () => ({ access_token: 'USER' })],
+      ['/me/accounts', () => ({ data: [{ name: 'Ірина', access_token: 'PAGE-TOKEN', instagram_business_account: { id: '1784', username: 'irina.gromova' } }] })],
+      ['/me/businesses', () => ({ data: [] })],
+    ]);
+    await env.s.instagram!.exchangeCode('CODE');
+    const t = await env.s.tokens.get('instagram');
+    expect(t?.accessToken).toBe('PAGE-TOKEN');
+    expect(t?.expiresAt).toBeUndefined();
+    expect(await env.s.instagram!.refreshToken(true)).toBeUndefined();
+  });
+});

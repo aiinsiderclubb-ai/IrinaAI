@@ -142,7 +142,9 @@ Node 22. `npm test` (no network, no Postgres needed: PGlite + fakes), `npm run t
    ```
    It maps the existing tasks DB (status values, project, due, priority, notes) and creates 4 databases next to it: decisions, expected replies, finance, materials. **Read the printed mapping** — the guess is heuristic; correct `settings.notion` in the `kv` table if a status name is wrong.
 3. **Google**: Cloud project → OAuth consent screen → **publish to Production** (in "Testing" refresh tokens die after 7 days) → Web client, redirect `PUBLIC_URL/oauth/google/callback`. APIs to enable: Calendar, YouTube Data, YouTube Analytics. Then `/connect` in the bot (work calendar, personal calendar, YouTube). Google will show "unverified app": Advanced → continue.
-4. **Instagram**: Meta app with "Instagram API with Instagram Login", redirect `PUBLIC_URL/oauth/instagram/callback`; the account must be Business/Creator and added as an app role (Instagram tester) while the app is in development mode. `/connect` → Instagram. The token lives 60 days and is refreshed automatically; the bot warns if it cannot.
+4. **Instagram** (two login modes, picked in Опції → Підключення):
+   * *Через Facebook* (default): the owner gives a Facebook account access to the Instagram account in her business portfolio (or Page). Meta app of type Business with Facebook Login for Business, redirect `PUBLIC_URL/oauth/instagram/callback`; that Facebook account must have a role on the app while it is in development mode. The account is found through Pages (`me/accounts`) or the portfolio (`{business}/instagram_business_accounts`). A Page token does not expire; without a Page the user token lives 60 days and the bot warns a week before.
+   * *Логін самим акаунтом*: "Instagram API with Instagram Login"; the account must be Business/Creator and an Instagram tester. The token lives 60 days and is refreshed automatically.
 5. **Voice**: ElevenLabs key + one voice id. Without them replies are text only.
 6. **Settings** by chat: "ранковий звіт о 7:30", "/voice on". Projects, categories, event topics/geography live in `settings` (set by `setup:notion` or via the agent for topics).
 

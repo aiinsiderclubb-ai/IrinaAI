@@ -74,7 +74,12 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
         appId: ic.meta?.appId ?? (s.cfg.META_APP_ID ? 'з налаштувань сервера' : undefined),
         appSecret: mask(ic.meta?.appSecret),
         redirectUri: `${base}/oauth/instagram/callback`,
-        instagram: { state: await slot('instagram'), connectUrl: s.instagram?.authUrl(state('instagram')), expiresAt: (await s.tokens.get('instagram'))?.expiresAt },
+        login: ic.meta?.login ?? 'facebook',
+        configId: ic.meta?.configId,
+        instagram: await (async () => {
+          const t = await s.tokens.get('instagram');
+          return { state: await slot('instagram'), connectUrl: s.instagram?.authUrl(state('instagram')), expiresAt: t?.expiresAt, username: t?.meta.username || undefined };
+        })(),
       },
       elevenlabs: { state: ic.elevenlabs?.apiKey || s.cfg.ELEVENLABS_API_KEY ? 'on' : 'off', apiKey: mask(ic.elevenlabs?.apiKey) ?? (s.cfg.ELEVENLABS_API_KEY ? 'з налаштувань сервера' : undefined) },
       openai: { apiKey: mask(ic.openai?.apiKey) ?? 'з налаштувань сервера', model: s.cfg.OPENAI_MODEL },
@@ -92,7 +97,12 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
 
   const keyBodies = {
     google: z.object({ clientId: z.string().trim().min(10), clientSecret: z.string().trim() }),
-    meta: z.object({ appId: z.string().trim().min(5), appSecret: z.string().trim() }),
+    meta: z.object({
+      appId: z.string().trim().min(5),
+      appSecret: z.string().trim(),
+      login: z.enum(['facebook', 'instagram']).optional(),
+      configId: z.string().trim().optional(),
+    }),
     elevenlabs: z.object({ apiKey: z.string().trim().min(10) }),
     openai: z.object({ apiKey: z.string().trim().min(20) }),
   } as const;

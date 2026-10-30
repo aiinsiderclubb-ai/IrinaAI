@@ -16,7 +16,7 @@ type CustomView =
 interface View {
   notion: { state: State; token?: string; readOnly: boolean; tasksDb?: string; mapping?: any; contextPages: string[]; helperDbs: Record<string, boolean> };
   google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; readOnly: boolean; calendars: Record<'work' | 'personal', string>; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
-  meta: { configured: boolean; appId?: string; appSecret?: string; redirectUri: string; instagram: { state: State; connectUrl?: string; expiresAt?: string } };
+  meta: { configured: boolean; appId?: string; appSecret?: string; redirectUri: string; login: 'facebook' | 'instagram'; configId?: string; instagram: { state: State; connectUrl?: string; expiresAt?: string; username?: string } };
   elevenlabs: { state: State; apiKey?: string };
   openai: { apiKey?: string; model: string };
   custom: CustomView[];
@@ -437,31 +437,58 @@ function MetaSection({ view, busy, run }: { view: View; busy: string | null; run
   const m = view.meta;
   const [id, setId] = useState('');
   const [secret, setSecret] = useState('');
+  const [configId, setConfigId] = useState(m.configId ?? '');
+  const [login, setLogin] = useState<'facebook' | 'instagram'>(m.login);
+  const fb = login === 'facebook';
+  const savedId = m.appId && !m.appId.includes('сервера') ? m.appId : '';
   return (
     <Section title="Instagram" hint="Business / Creator, лише читання статистики" right={<Pill state={m.instagram.state === 'on' ? 'on' : m.configured ? 'setup' : 'off'} />}>
       <ol className="steps">
         <li>
-          <b>Застосунок Meta.</b> developers.facebook.com → Create app → продукт «Instagram API with Instagram Login». Redirect URI:
+          <b>Як входимо.</b>
+          <div className="row" style={{ marginTop: 6 }}>
+            <select className="input" value={login} onChange={(e) => setLogin(e.target.value as 'facebook' | 'instagram')}>
+              <option value="facebook">Через Facebook (доступ у бізнес-портфоліо)</option>
+              <option value="instagram">Логін самим акаунтом Instagram</option>
+            </select>
+          </div>
+        </li>
+        <li>
+          <b>Застосунок Meta.</b>{' '}
+          {fb
+            ? 'developers.facebook.com → Create app → тип Business → продукт «Facebook Login for Business» (або сценарій «Instagram API setup with Facebook login»). Valid OAuth Redirect URI:'
+            : 'developers.facebook.com → Create app → продукт «Instagram API with Instagram Login». Redirect URI:'}
           <Copy value={m.redirectUri} />
           {m.appId && <div className="muted">Зараз: {m.appId}{m.appSecret ? ` · ${m.appSecret}` : ''}</div>}
           <div className="form-grid" style={{ padding: '8px 0 0' }}>
-            <Field label="Instagram App ID">
+            <Field label={fb ? 'App ID' : 'Instagram App ID'}>
               <input className="input" value={id} onChange={(e) => setId(e.target.value)} />
             </Field>
-            <Field label="Instagram App secret">
+            <Field label={fb ? 'App secret' : 'Instagram App secret'}>
               <input className="input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={m.appSecret ? 'залишити як є' : ''} autoComplete="off" />
             </Field>
+            {fb && (
+              <Field label="Configuration ID (необовʼязково)">
+                <input className="input" value={configId} onChange={(e) => setConfigId(e.target.value)} placeholder="з Facebook Login for Business" />
+              </Field>
+            )}
           </div>
           <div className="row">
-            <button type="button" className="btn btn-primary btn-sm" disabled={!id || busy === 'meta'} onClick={() => void run('meta', () => api.put<View>('/api/integrations/meta', { appId: id, appSecret: secret }), 'Instagram налаштовано')}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={!(id || savedId) || busy === 'meta'}
+              onClick={() => void run('meta', () => api.put<View>('/api/integrations/meta', { appId: id || savedId, appSecret: secret, login, configId: fb ? configId : '' }), 'Instagram налаштовано')}
+            >
               Зберегти
             </button>
           </div>
         </li>
         <li>
-          <b>Підключити акаунт.</b>
+          <b>Підключити акаунт.</b> {fb ? 'Увійдіть акаунтом Facebook, якому надали доступ до Instagram, і позначте цей Instagram у вікні дозволів.' : ''}
           <div className="row">
             <Pill state={m.instagram.state} />
+            {m.instagram.username && <span>@{m.instagram.username}</span>}
             {m.instagram.expiresAt && <span className="muted">токен до {new Date(m.instagram.expiresAt).toLocaleDateString('uk-UA')}</span>}
             {m.instagram.connectUrl && (
               <a className="btn btn-sm" href={m.instagram.connectUrl} target="_blank" rel="noreferrer">

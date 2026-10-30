@@ -28,7 +28,7 @@ export async function applyIntegrations(s: Services): Promise<void> {
   s.youtube = s.googleAuth ? new YouTubeClient(s.googleAuth, s.clock) : undefined;
 
   const m = { id: ic.meta?.appId || cfg.META_APP_ID, secret: ic.meta?.appSecret || cfg.META_APP_SECRET };
-  s.instagram = m.id && m.secret ? new InstagramClient({ appId: m.id, appSecret: m.secret, redirectUri: `${base}/oauth/instagram/callback` }, s.tokens, s.clock) : undefined;
+  s.instagram = m.id && m.secret ? new InstagramClient({ appId: m.id, appSecret: m.secret, redirectUri: `${base}/oauth/instagram/callback`, login: ic.meta?.login, configId: ic.meta?.configId }, s.tokens, s.clock) : undefined;
 
   const eleven = ic.elevenlabs?.apiKey || cfg.ELEVENLABS_API_KEY;
   s.tts = eleven

@@ -58,7 +58,14 @@ export interface IntegrationConfig {
     /** calendar writes (events, day plan, work↔personal mirror) are off unless explicitly false */
     readOnly?: boolean;
   };
-  meta?: { appId?: string; appSecret?: string };
+  meta?: {
+    appId?: string;
+    appSecret?: string;
+    /** `facebook` (default): a Facebook account with access to the Instagram account; `instagram`: log in as the account */
+    login?: 'facebook' | 'instagram';
+    /** Facebook Login for Business configuration id */
+    configId?: string;
+  };
   elevenlabs?: { apiKey?: string };
   openai?: { apiKey?: string };
   custom?: CustomIntegration[];
