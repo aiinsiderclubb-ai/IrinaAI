@@ -38,9 +38,18 @@ export interface CalendarPort {
   create(account: Account, ev: NewEvent): Promise<CalEvent>;
   patch(account: Account, id: string, patch: Partial<Pick<NewEvent, 'title' | 'start' | 'end' | 'timeZone'>>): Promise<void>;
   remove(account: Account, id: string): Promise<void>;
+  calendars?(account: Account): Promise<CalendarInfo[]>;
 }
 
-const BASE = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+const API = 'https://www.googleapis.com/calendar/v3';
+
+export interface CalendarInfo {
+  id: string;
+  name: string;
+  primary: boolean;
+  /** owner | writer | reader | freeBusyReader */
+  access: string;
+}
 
 function fromApi(account: Account, e: any): CalEvent {
   const allDay = Boolean(e.start?.date);
@@ -61,13 +70,26 @@ function fromApi(account: Account, e: any): CalEvent {
 }
 
 export class GoogleCalendar implements CalendarPort {
-  constructor(private auth: GoogleAuth) {}
+  constructor(
+    private auth: GoogleAuth,
+    private calendarOf: (a: Account) => string = () => 'primary',
+  ) {}
+
+  private base(account: Account) {
+    return `${API}/calendars/${encodeURIComponent(this.calendarOf(account))}/events`;
+  }
+
+  /** Calendars the connected Google account can see: its own and the ones shared with it. */
+  async calendars(account: Account): Promise<CalendarInfo[]> {
+    const res = await this.auth.authedJson<{ items?: any[] }>(slotOf(account), `${API}/users/me/calendarList`, { query: { maxResults: 250 } });
+    return (res.items ?? []).map((c) => ({ id: c.id, name: c.summaryOverride ?? c.summary ?? c.id, primary: Boolean(c.primary), access: c.accessRole }));
+  }
 
   async list(account: Account, fromISO: string, toISO: string): Promise<CalEvent[]> {
     const out: CalEvent[] = [];
     let pageToken: string | undefined;
     do {
-      const res = await this.auth.authedJson<{ items?: any[]; nextPageToken?: string }>(slotOf(account), BASE, {
+      const res = await this.auth.authedJson<{ items?: any[]; nextPageToken?: string }>(slotOf(account), this.base(account), {
         query: { singleEvents: 'true', orderBy: 'startTime', timeMin: fromISO, timeMax: toISO, maxResults: 250, pageToken },
       });
       for (const e of res.items ?? []) if (e.status !== 'cancelled') out.push(fromApi(account, e));
@@ -77,7 +99,7 @@ export class GoogleCalendar implements CalendarPort {
   }
 
   async create(account: Account, ev: NewEvent): Promise<CalEvent> {
-    const res = await this.auth.authedJson<any>(slotOf(account), BASE, {
+    const res = await this.auth.authedJson<any>(slotOf(account), this.base(account), {
       method: 'POST',
       json: {
         summary: ev.title,
@@ -93,7 +115,7 @@ export class GoogleCalendar implements CalendarPort {
   }
 
   async patch(account: Account, id: string, p: Partial<Pick<NewEvent, 'title' | 'start' | 'end' | 'timeZone'>>): Promise<void> {
-    await this.auth.authedJson(slotOf(account), `${BASE}/${encodeURIComponent(id)}`, {
+    await this.auth.authedJson(slotOf(account), `${this.base(account)}/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: {
         ...(p.title !== undefined ? { summary: p.title } : {}),
@@ -104,6 +126,6 @@ export class GoogleCalendar implements CalendarPort {
   }
 
   async remove(account: Account, id: string): Promise<void> {
-    await this.auth.authedJson(slotOf(account), `${BASE}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await this.auth.authedJson(slotOf(account), `${this.base(account)}/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 }

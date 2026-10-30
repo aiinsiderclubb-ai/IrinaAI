@@ -1,0 +1,84 @@
+<template>
+  <style>
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-cyrillic.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-cyrillic.woff2') format('woff2'); font-weight: 500; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-latin.woff2') format('woff2'); font-weight: 500; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-cyrillic.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-latin.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+#root { position: absolute; inset: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: #0B0B0F; }
+.full { position: absolute; inset: 0; }
+.kin { font-family: 'Unbounded', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 0.92; }
+.h1 { font-weight: 900; letter-spacing: -0.045em; line-height: 1.02; }
+.hl { background: #3A2BFC; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hl-ink { background: #0B0B0F; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; }
+.caps { font-weight: 700; text-transform: uppercase; letter-spacing: 0.32em; }
+.mono { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.hdr { position: absolute; left: 72px; right: 72px; top: 64px; height: 44px; display: flex; align-items: center; justify-content: space-between; }
+.hdr img { height: 40px; }
+.dashes { display: flex; gap: 10px; }
+.dashes i { display: block; width: 46px; height: 8px; border-radius: 4px; background: currentColor; opacity: 0.18; }
+.dashes i.on { background: #3A2BFC; opacity: 1; }
+.chip { position: absolute; left: 72px; top: 196px; display: flex; align-items: center; gap: 18px; font-size: 28px; }
+.chip b { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 14px; border-radius: 8px; background: #3A2BFC; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: 0.04em; }
+/* the phone: a black body with the Telegram-style chat of the assistant */
+.phone { position: absolute; width: 760px; height: 1540px; border-radius: 108px; background: #0A0A0C; padding: 18px; box-shadow: 0 60px 120px rgb(10 10 30 / 0.35), inset 0 0 0 2px rgb(255 255 255 / 0.16); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 92px; overflow: hidden; background: #0E1013; }
+.island { position: absolute; left: 50%; top: 22px; width: 190px; height: 54px; margin-left: -95px; border-radius: 27px; background: #000; z-index: 3; }
+.tg-top { position: absolute; left: 0; right: 0; top: 0; height: 200px; padding: 104px 36px 0; background: #17191D; display: flex; align-items: center; gap: 20px; color: #fff; }
+.tg-ava { width: 72px; height: 72px; border-radius: 50%; background: #3A2BFC url('assets/ai-insider-mark-white.png') center / 56% no-repeat; }
+.tg-name { font-weight: 700; font-size: 36px; line-height: 1.1; }
+.tg-sub { font-size: 28px; color: #8A8F98; }
+.bubble { position: absolute; left: 30px; right: 70px; background: #1F2227; color: #E9EBEF; border-radius: 34px 34px 34px 10px; padding: 28px 32px; font-size: 32px; line-height: 1.42; }
+.bubble b { color: #fff; font-weight: 700; }
+.ln { display: block; }
+.gap { display: block; height: 18px; }
+
+    #root { background: #0B0B0F; }
+
+    .a-card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .a-num { font-size: 560px; line-height: 0.85; }
+    .a-word { font-size: 104px; margin-top: 30px; }
+    #a1 { background: #0B0B0F; color: #fff; } #a1 .a-num { text-shadow: 2px 2px 0 #2A2A33, 4px 4px 0 #2A2A33, 6px 6px 0 #2A2A33, 8px 8px 0 #2A2A33, 10px 10px 0 #2A2A33, 12px 12px 0 #2A2A33, 14px 14px 0 #2A2A33, 16px 16px 0 #2A2A33, 18px 18px 0 #2A2A33, 20px 20px 0 #2A2A33, 22px 22px 0 #2A2A33, 24px 24px 0 #2A2A33, 26px 26px 0 #2A2A33, 28px 28px 0 #2A2A33; }
+    #a2 { background: #F2F1EC; color: #0B0B0F; } #a2 .a-num { text-shadow: 2px 2px 0 #C9C7BF, 4px 4px 0 #C9C7BF, 6px 6px 0 #C9C7BF, 8px 8px 0 #C9C7BF, 10px 10px 0 #C9C7BF, 12px 12px 0 #C9C7BF, 14px 14px 0 #C9C7BF, 16px 16px 0 #C9C7BF, 18px 18px 0 #C9C7BF, 20px 20px 0 #C9C7BF, 22px 22px 0 #C9C7BF, 24px 24px 0 #C9C7BF, 26px 26px 0 #C9C7BF, 28px 28px 0 #C9C7BF; }
+    #a3 { background: #3A2BFC; color: #fff; } #a3 .a-num { text-shadow: 2px 2px 0 #1F14B8, 4px 4px 0 #1F14B8, 6px 6px 0 #1F14B8, 8px 8px 0 #1F14B8, 10px 10px 0 #1F14B8, 12px 12px 0 #1F14B8, 14px 14px 0 #1F14B8, 16px 16px 0 #1F14B8, 18px 18px 0 #1F14B8, 20px 20px 0 #1F14B8, 22px 22px 0 #1F14B8, 24px 24px 0 #1F14B8, 26px 26px 0 #1F14B8, 28px 28px 0 #1F14B8; }
+    #a3 .a-word span { display: inline-block; }
+
+  </style>
+  <div id="root" data-composition-id="a" data-width="1080" data-height="1920">
+
+    <div class="a-card" id="a1" data-layout-allow-overlap><div class="kin a-num" id="a1n">5</div><div class="kin a-word" id="a1w">зустрічей</div></div>
+    <div class="a-card" id="a2" data-layout-allow-occlusion data-layout-allow-overlap><div class="kin a-num" id="a2n">2</div><div class="kin a-word" id="a2w">календарі</div></div>
+    <div class="a-card" id="a3" data-layout-allow-occlusion data-layout-allow-overlap><div class="kin a-num" id="a3n">1</div><div class="kin a-word" id="a3w"><span>н</span><span>а</span><span>к</span><span>л</span><span>а</span><span>д</span><span>к</span><span>а</span></div></div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    const SCENE = 2.903; const BEAT = 0.48387; const B = (k) => Math.max(0, 0.48387 * k + 0.0000);
+    const R = document.querySelector('[data-composition-id="a"]');
+    const $ = (s) => R.querySelectorAll(s);
+    // slam: arrives big and blurred, lands hard
+    const slam = (s, at, from = 1.6) => tl.fromTo(s, { opacity: 0, scale: from, filter: 'blur(14px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.16, ease: 'expo.out' }, at);
+    // per-word blur-in, no travel
+    const words = (s, at, gap = 0.06) => tl.fromTo(s, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.14, stagger: gap, ease: 'power2.out' }, at);
+    // whip out sideways with a smear
+    const whip = (s, at, x = -1300) => tl.to(s, { x, filter: 'blur(18px)', duration: 0.22, ease: 'power3.in' }, at);
+
+    tl.fromTo('#a1n', { scale: 1.25, filter: 'blur(10px)' }, { scale: 1, filter: 'blur(0px)', duration: 0.2, ease: 'expo.out' }, 0);
+    tl.fromTo('#a1w', { opacity: 0.35, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.2 }, 0.0);
+    tl.fromTo('#a2', { opacity: 0 }, { opacity: 1, duration: 0.01 }, B(2));
+    slam('#a2n', B(2)); words('#a2w', B(2) + 0.2);
+    tl.fromTo('#a3', { opacity: 0 }, { opacity: 1, duration: 0.01 }, B(4));
+    slam('#a3n', B(4));
+    // the word shakes apart: letters land out of line, then snap straight
+    const rnd = (i) => { const x = Math.sin(i * 91.7) * 43758.5; return x - Math.floor(x); };
+    $('#a3w span').forEach((el, i) => tl.fromTo(el, { y: (rnd(i) - 0.5) * 160, rotation: (rnd(i + 9) - 0.5) * 50, opacity: 0 }, { y: (rnd(i) - 0.5) * 40, rotation: (rnd(i + 9) - 0.5) * 14, opacity: 1, duration: 0.18, ease: 'expo.out' }, B(4) + 0.12 + i * 0.03));
+    $('#a3w span').forEach((el, i) => tl.to(el, { y: 0, rotation: 0, duration: 0.12, ease: 'power3.out' }, B(5) + 0.1));
+    // tape stop: the frame stutters, then squeezes into a line
+    [0, 1, 2].forEach((k) => tl.fromTo('#a3', { scale: 1 }, { scale: 1.06, duration: 0.05, yoyo: true, repeat: 1, ease: 'power1.inOut' }, B(5.5) + k * 0.12));
+    tl.to('#a3', { scaleY: 0.004, duration: 0.18, ease: 'power3.in' }, SCENE - 0.2);
+
+    window.__timelines['a'] = tl;
+  </script>
+</template>

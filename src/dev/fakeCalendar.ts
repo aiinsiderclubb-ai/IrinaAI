@@ -1,6 +1,13 @@
-import type { Account, CalEvent, CalendarPort, NewEvent } from '../integrations/google-calendar.js';
+import type { Account, CalEvent, CalendarInfo, CalendarPort, NewEvent } from '../integrations/google-calendar.js';
 
 export class FakeCalendar implements CalendarPort {
+  async calendars(account: Account): Promise<CalendarInfo[]> {
+    return [
+      { id: `${account}@example.com`, name: account === 'work' ? 'Робочий' : 'Особистий', primary: true, access: 'owner' },
+      { id: `shared-${account}@example.com`, name: account === 'work' ? 'Ірина · робота' : 'Ірина · особисте', primary: false, access: 'reader' },
+    ];
+  }
+
   events: Record<Account, CalEvent[]> = { work: [], personal: [] };
   private n = 0;
   calls = { create: 0, patch: 0, remove: 0 };

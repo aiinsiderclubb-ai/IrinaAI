@@ -23,7 +23,8 @@ export async function applyIntegrations(s: Services): Promise<void> {
 
   const g = { id: ic.google?.clientId || cfg.GOOGLE_CLIENT_ID, secret: ic.google?.clientSecret || cfg.GOOGLE_CLIENT_SECRET };
   s.googleAuth = g.id && g.secret ? new GoogleAuth({ clientId: g.id, clientSecret: g.secret, redirectUri: `${base}/oauth/google/callback` }, s.tokens, s.clock) : undefined;
-  s.calendar = s.googleAuth ? new GoogleCalendar(s.googleAuth) : undefined;
+  const calendars = ic.google?.calendars ?? {};
+  s.calendar = s.googleAuth ? new GoogleCalendar(s.googleAuth, (a) => calendars[a] || 'primary') : undefined;
   s.youtube = s.googleAuth ? new YouTubeClient(s.googleAuth, s.clock) : undefined;
 
   const m = { id: ic.meta?.appId || cfg.META_APP_ID, secret: ic.meta?.appSecret || cfg.META_APP_SECRET };
@@ -54,6 +55,12 @@ export async function applyIntegrations(s: Services): Promise<void> {
 }
 
 /** Notion writes are allowed only when the owner switched read-only off. */
+/** Same rule as Notion: once Google is set up from the cabinet, the calendar is read-only until the owner allows writes. */
+export async function calendarWritable(s: Services): Promise<boolean> {
+  const ic = (await s.integrations?.get()) ?? {};
+  return ic.google ? ic.google.readOnly === false : true;
+}
+
 export async function notionWritable(s: Services): Promise<boolean> {
   const ic = (await s.integrations?.get()) ?? {};
   return ic.notion ? ic.notion.readOnly === false : true;

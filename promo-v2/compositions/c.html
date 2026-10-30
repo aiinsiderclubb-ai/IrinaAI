@@ -1,0 +1,95 @@
+<template>
+  <style>
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-cyrillic.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-cyrillic.woff2') format('woff2'); font-weight: 500; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-latin.woff2') format('woff2'); font-weight: 500; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-cyrillic.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-latin.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+#root { position: absolute; inset: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: #0B0B0F; }
+.full { position: absolute; inset: 0; }
+.kin { font-family: 'Unbounded', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 0.92; }
+.h1 { font-weight: 900; letter-spacing: -0.045em; line-height: 1.02; }
+.hl { background: #3A2BFC; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hl-ink { background: #0B0B0F; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; }
+.caps { font-weight: 700; text-transform: uppercase; letter-spacing: 0.32em; }
+.mono { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.hdr { position: absolute; left: 72px; right: 72px; top: 64px; height: 44px; display: flex; align-items: center; justify-content: space-between; }
+.hdr img { height: 40px; }
+.dashes { display: flex; gap: 10px; }
+.dashes i { display: block; width: 46px; height: 8px; border-radius: 4px; background: currentColor; opacity: 0.18; }
+.dashes i.on { background: #3A2BFC; opacity: 1; }
+.chip { position: absolute; left: 72px; top: 196px; display: flex; align-items: center; gap: 18px; font-size: 28px; }
+.chip b { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 14px; border-radius: 8px; background: #3A2BFC; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: 0.04em; }
+/* the phone: a black body with the Telegram-style chat of the assistant */
+.phone { position: absolute; width: 760px; height: 1540px; border-radius: 108px; background: #0A0A0C; padding: 18px; box-shadow: 0 60px 120px rgb(10 10 30 / 0.35), inset 0 0 0 2px rgb(255 255 255 / 0.16); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 92px; overflow: hidden; background: #0E1013; }
+.island { position: absolute; left: 50%; top: 22px; width: 190px; height: 54px; margin-left: -95px; border-radius: 27px; background: #000; z-index: 3; }
+.tg-top { position: absolute; left: 0; right: 0; top: 0; height: 200px; padding: 104px 36px 0; background: #17191D; display: flex; align-items: center; gap: 20px; color: #fff; }
+.tg-ava { width: 72px; height: 72px; border-radius: 50%; background: #3A2BFC url('assets/ai-insider-mark-white.png') center / 56% no-repeat; }
+.tg-name { font-weight: 700; font-size: 36px; line-height: 1.1; }
+.tg-sub { font-size: 28px; color: #8A8F98; }
+.bubble { position: absolute; left: 30px; right: 70px; background: #1F2227; color: #E9EBEF; border-radius: 34px 34px 34px 10px; padding: 28px 32px; font-size: 32px; line-height: 1.42; }
+.bubble b { color: #fff; font-weight: 700; }
+.ln { display: block; }
+.gap { display: block; height: 18px; }
+
+    #root { background: #F2F1EC; }
+
+    #c-title { position: absolute; left: 72px; right: 72px; top: 280px; font-size: 104px; }
+    #c-title span { display: inline-block; }
+    #c-star { position: absolute; left: 520px; top: 1180px; width: 520px; height: 520px; }
+    #c-star-t { position: absolute; left: 520px; top: 1180px; width: 520px; height: 520px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 54px; }
+
+  </style>
+  <div id="root" data-composition-id="c" data-width="1080" data-height="1920">
+
+    <div class="hdr" style="color:#0B0B0F"><img src="assets/ai-insider-logo-dark.png" alt="AI Insider"><div class="dashes"><i class="on"></i><i></i><i></i><i></i></div></div>
+    <div class="chip caps" style="color:#0B0B0F"><b>01</b>Ранок</div>
+    <div id="c-title" class="h1"><span>Звіт</span> <span>уже</span> <span>чекає</span> <span>о</span> <span class="hl">07:58</span></div>
+    <div class="phone" id="c-ph" style="left:160px; top:620px">
+  <div class="screen"><div class="island"></div>
+    <div class="tg-top"><div class="tg-ava"></div><div><div class="tg-name">Асистент</div><div class="tg-sub">бот</div></div></div>
+    <div class="bubble" id="c-ph-b" style="top:232px"><span class="ln"><b>☀️ Доброго ранку! ср, 28 жовт.</b></span><span class="gap"></span>
+<span class="ln"><b>🗓 Графік дня</b></span>
+<span class="ln">• 09:30 Стендап команди</span>
+<span class="ln">• 11:00 Зустріч з фондом</span>
+<span class="ln">• 11:30 Стоматолог</span>
+<span class="ln">• 15:00 Рев’ю лендингу</span>
+<span class="ln">• 19:00 Тренування</span>
+<span class="ln" id="c-conf" style="color:#FF6B6B">⚠️ <b style="color:#FF6B6B">Конфлікт:</b> фонд ↔ стоматолог</span><span class="gap"></span>
+<span class="ln"><b>⭐ Три головні пріоритети</b></span>
+<span class="ln">• Відповісти юристу</span>
+<span class="ln">• Презентація для інвесторів</span></div>
+  </div>
+</div>
+    <svg id="c-star" viewBox="-100 -100 200 200"><polygon fill="#3A2BFC" points="96.0,0.0 67.6,18.1 83.1,48.0 49.5,49.5 48.0,83.1 18.1,67.6 0.0,96.0 -18.1,67.6 -48.0,83.1 -49.5,49.5 -83.1,48.0 -67.6,18.1 -96.0,0.0 -67.6,-18.1 -83.1,-48.0 -49.5,-49.5 -48.0,-83.1 -18.1,-67.6 -0.0,-96.0 18.1,-67.6 48.0,-83.1 49.5,-49.5 83.1,-48.0 67.6,-18.1"/></svg>
+    <div id="c-star-t" class="kin" data-layout-allow-overlap data-layout-allow-occlusion>накладка</div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    const SCENE = 5.806; const BEAT = 0.48387; const B = (k) => Math.max(0, 0.48387 * k + 0.0002);
+    const R = document.querySelector('[data-composition-id="c"]');
+    const $ = (s) => R.querySelectorAll(s);
+    // slam: arrives big and blurred, lands hard
+    const slam = (s, at, from = 1.6) => tl.fromTo(s, { opacity: 0, scale: from, filter: 'blur(14px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.16, ease: 'expo.out' }, at);
+    // per-word blur-in, no travel
+    const words = (s, at, gap = 0.06) => tl.fromTo(s, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.14, stagger: gap, ease: 'power2.out' }, at);
+    // whip out sideways with a smear
+    const whip = (s, at, x = -1300) => tl.to(s, { x, filter: 'blur(18px)', duration: 0.22, ease: 'power3.in' }, at);
+
+    words('#c-title span', 0.1, 0.07);
+    tl.fromTo('#c-ph', { y: 1100 }, { y: 0, duration: 0.7, ease: 'expo.out' }, 0.25);
+    tl.fromTo('#c-ph-b', { opacity: 0, scale: 0.9, transformOrigin: '0% 100%' }, { opacity: 1, scale: 1, duration: 0.4, ease: 'expo.out' }, B(2));
+    words('#c-ph-b .ln', B(2) + 0.1, 0.05);
+    tl.fromTo('#c-conf', { backgroundColor: 'rgba(255,107,107,0)' }, { backgroundColor: 'rgba(255,107,107,0.2)', duration: 0.2 }, B(5));
+    // the conflict gets a sticker, spinning in
+    tl.fromTo(['#c-star', '#c-star-t'], { scale: 0, rotation: -160 }, { scale: 1, rotation: -10, duration: 0.4, ease: 'back.out(2)' }, B(6));
+    tl.to('#c-star', { rotation: 20, duration: SCENE - B(6) - 0.4, ease: 'none' }, B(6) + 0.4);
+    whip([...R.children], SCENE - 0.24);
+
+    window.__timelines['c'] = tl;
+  </script>
+</template>

@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { runPending, type ActionKind, type ActionPayloads } from '../actions.js';
-import { notionWritable } from '../integrations/runtime.js';
+import { calendarWritable, notionWritable } from '../integrations/runtime.js';
 import { mcpCallTool } from '../integrations/mcp.js';
 import { findConflicts } from '../calendar/logic.js';
 import type { Account } from '../integrations/google-calendar.js';
@@ -38,9 +38,17 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
 const date = z.string().describe('Дата YYYY-MM-DD');
 const dateTime = z.string().describe('Локальний час YYYY-MM-DDTHH:mm (часовий пояс власника) або дата YYYY-MM-DD');
 
+const CALENDAR_KINDS = new Set<ActionKind>(['calendar.create', 'plan.apply']);
 const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save']);
 
 async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
+  if (CALENDAR_KINDS.has(kind) && !(await calendarWritable(ctx.s))) {
+    return {
+      status: 'read_only',
+      note: 'Календар підключено лише на читання (так домовились із власником). Нічого не створюй; скажи, що саме поставив би, і що запис можна увімкнути в Опції → Підключення → Google.',
+      would_do: summary,
+    };
+  }
   if (NOTION_KINDS.has(kind) && !(await notionWritable(ctx.s))) {
     return {
       status: 'read_only',

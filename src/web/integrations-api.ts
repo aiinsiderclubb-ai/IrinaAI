@@ -61,6 +61,8 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
         clientId: ic.google?.clientId ?? (s.cfg.GOOGLE_CLIENT_ID ? 'з налаштувань сервера' : undefined),
         clientSecret: mask(ic.google?.clientSecret),
         redirectUri: `${base}/oauth/google/callback`,
+        readOnly: ic.google ? ic.google.readOnly !== false : false,
+        calendars: { work: ic.google?.calendars?.work ?? 'primary', personal: ic.google?.calendars?.personal ?? 'primary' },
         accounts: {
           work: { state: await slot('google:work'), connectUrl: s.googleAuth?.authUrl('google:work', state('google:work')) },
           personal: { state: await slot('google:personal'), connectUrl: s.googleAuth?.authUrl('google:personal', state('google:personal')) },
@@ -122,6 +124,33 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
     if (!['google', 'meta', 'elevenlabs', 'openai', 'notion'].includes(section)) return reply.code(404).send({ error: 'unknown section' });
     await store.clear(section);
     if (section === 'notion') await s.settings.update({ notion: undefined, notionContextPages: [] });
+    await apply();
+    return view();
+  });
+
+  // ---------- Google: which calendar each account reads, read-only switch ----------
+
+  app.get<{ Params: { account: string } }>('/api/integrations/google/calendars/:account', async (req, reply) => {
+    const account = req.params.account;
+    if (account !== 'work' && account !== 'personal') return reply.code(404).send({ error: 'unknown account' });
+    if (!s.calendar?.calendars) return reply.code(400).send({ error: 'Спершу підключіть Google' });
+    try {
+      return { items: await s.calendar.calendars(account) };
+    } catch (e) {
+      return reply.code(400).send({ error: errMsg(e).slice(0, 300) });
+    }
+  });
+
+  const googleBody = z.object({
+    readOnly: z.boolean().optional(),
+    calendars: z.object({ work: z.string().trim().min(1).max(300).optional(), personal: z.string().trim().min(1).max(300).optional() }).optional(),
+  });
+  app.patch('/api/integrations/google', async (req, reply) => {
+    const parsed = googleBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+    const cur = (await store.get()).google ?? {};
+    const { readOnly, calendars } = parsed.data;
+    await store.patch('google', { ...(readOnly !== undefined ? { readOnly } : {}), ...(calendars ? { calendars: { ...cur.calendars, ...calendars } } : {}) });
     await apply();
     return view();
   });

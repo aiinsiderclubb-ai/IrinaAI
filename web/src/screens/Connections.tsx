@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 
@@ -15,7 +15,7 @@ type CustomView =
 
 interface View {
   notion: { state: State; token?: string; readOnly: boolean; tasksDb?: string; mapping?: any; contextPages: string[]; helperDbs: Record<string, boolean> };
-  google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
+  google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; readOnly: boolean; calendars: Record<'work' | 'personal', string>; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
   meta: { configured: boolean; appId?: string; appSecret?: string; redirectUri: string; instagram: { state: State; connectUrl?: string; expiresAt?: string } };
   elevenlabs: { state: State; apiKey?: string };
   openai: { apiKey?: string; model: string };
@@ -300,9 +300,19 @@ function MappingView({ mapping }: { mapping: any }) {
           {mapping.status?.name}: «{mapping.status?.todo}» → {mapping.status?.doing ? `«${mapping.status.doing}» → ` : ''}«{mapping.status?.done}»
         </span>
       </div>
-      {row('Проєкт', mapping.project)}
+      {mapping.projectFromTitle ? (
+        <div className="map-row">
+          <span className="muted">Проєкт</span>
+          <span>з назви задачі («MLI · …»)</span>
+        </div>
+      ) : (
+        row('Проєкт', mapping.project)
+      )}
       {row('Дедлайн', mapping.due)}
       {row('Пріоритет', mapping.priority)}
+      {row('Напрям', mapping.area)}
+      {row('Відповідальний', mapping.owner)}
+      {row('Примітка', mapping.notes)}
     </div>
   );
 }
@@ -316,6 +326,10 @@ function GoogleSection({ view, busy, run }: { view: View; busy: string | null; r
   const [id, setId] = useState('');
   const [secret, setSecret] = useState('');
   const connected = Object.values(g.accounts).filter((a) => a.state === 'on').length;
+  const setCalendarReadOnly = (readOnly: boolean) => {
+    if (!readOnly && !window.confirm('Дозволити асистенту створювати події в календарі після вашого підтвердження кожної дії? Переконайтесь, що власниця календаря погодила.')) return;
+    void run('google-ro', () => api.patch<View>('/api/integrations/google', { readOnly }), readOnly ? 'Календар: лише читання' : 'Запис у календар увімкнено');
+  };
   return (
     <Section title="Google: календарі та YouTube" hint="Робочий і особистий календар, статистика YouTube (лише читання)" right={<Pill state={connected ? 'on' : g.configured ? 'setup' : 'off'} label={connected ? `${connected}/3 підключено` : undefined} />}>
       <ol className="steps">
@@ -343,7 +357,7 @@ function GoogleSection({ view, busy, run }: { view: View; busy: string | null; r
           </div>
         </li>
         <li>
-          <b>Підключити акаунти.</b> Google покаже «неперевірений застосунок» — «Додатково → Перейти».
+          <b>Підключити акаунти.</b> Google покаже «неперевірений застосунок» — «Додатково → Перейти». Можна увійти акаунтом, якому надали доступ до календарів, — і нижче обрати потрібний календар.
           <ul className="list" style={{ padding: 0 }}>
             {([['work', 'Календар — робочий'], ['personal', 'Календар — особистий'], ['youtube', 'YouTube (статистика)']] as const).map(([k, label]) => (
               <li key={k}>
@@ -358,8 +372,64 @@ function GoogleSection({ view, busy, run }: { view: View; busy: string | null; r
             ))}
           </ul>
         </li>
+        {(g.accounts.work.state === 'on' || g.accounts.personal.state === 'on') && (
+          <li>
+            <b>Який календар читати.</b>
+            <ul className="list" style={{ padding: 0 }}>
+              {(['work', 'personal'] as const)
+                .filter((k) => g.accounts[k].state === 'on')
+                .map((k) => (
+                  <CalendarPick key={k} account={k} current={g.calendars[k]} busy={busy} run={run} />
+                ))}
+            </ul>
+            <div className="row" style={{ marginTop: 10 }}>
+              <label className="toggle">
+                <input type="checkbox" checked={!g.readOnly} onChange={(e) => setCalendarReadOnly(!e.target.checked)} />
+                Дозволити запис у календар (події, план дня, дзеркало робочий↔особистий; кожна подія — після «Підтвердити»)
+              </label>
+            </div>
+          </li>
+        )}
       </ol>
     </Section>
+  );
+}
+
+function CalendarPick({ account, current, busy, run }: { account: 'work' | 'personal'; current: string; busy: string | null; run: Run }) {
+  const [items, setItems] = useState<Array<{ id: string; name: string; primary: boolean; access: string }> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api
+      .get<{ items: Array<{ id: string; name: string; primary: boolean; access: string }> }>(`/api/integrations/google/calendars/${account}`)
+      .then((r) => setItems(r.items))
+      .catch((e) => setError(e instanceof ApiError ? e.message : String(e)));
+  }, [account]);
+  const ACCESS: Record<string, string> = { owner: 'власник', writer: 'редагування', reader: 'перегляд', freeBusyReader: 'лише зайнятість' };
+  const value = current === 'primary' ? items?.find((c) => c.primary)?.id ?? 'primary' : current;
+  return (
+    <li>
+      <span className="grow">{account === 'work' ? 'Робочий' : 'Особистий'}</span>
+      {error ? (
+        <span className="muted">{error}</span>
+      ) : !items ? (
+        <span className="muted">завантажую…</span>
+      ) : (
+        <select
+          className="select"
+          style={{ maxWidth: 320 }}
+          value={value}
+          disabled={busy === `cal-${account}`}
+          onChange={(e) => void run(`cal-${account}`, () => api.patch<View>('/api/integrations/google', { calendars: { [account]: e.target.value } }), 'Календар обрано')}
+        >
+          {items.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.primary ? ' (основний)' : ''} · {ACCESS[c.access] ?? c.access}
+            </option>
+          ))}
+        </select>
+      )}
+    </li>
   );
 }
 

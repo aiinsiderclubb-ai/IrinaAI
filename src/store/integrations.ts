@@ -50,7 +50,14 @@ export type CustomDraft = CustomIntegration extends infer T ? (T extends CustomI
 /** Everything that can be configured from the cabinet. Secrets are encrypted at rest (AES-256-GCM). */
 export interface IntegrationConfig {
   notion?: { token?: string; tasksDb?: string; contextPages?: string[]; readOnly?: boolean };
-  google?: { clientId?: string; clientSecret?: string };
+  google?: {
+    clientId?: string;
+    clientSecret?: string;
+    /** calendar per account; a calendar shared with the connected Google account works too (default `primary`) */
+    calendars?: { work?: string; personal?: string };
+    /** calendar writes (events, day plan, work↔personal mirror) are off unless explicitly false */
+    readOnly?: boolean;
+  };
   meta?: { appId?: string; appSecret?: string };
   elevenlabs?: { apiKey?: string };
   openai?: { apiKey?: string };

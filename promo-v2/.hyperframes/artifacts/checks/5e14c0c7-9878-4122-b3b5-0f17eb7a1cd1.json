@@ -1,0 +1,1560 @@
+{
+  "ok": false,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "filesScanned": 10
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": false,
+    "errorCount": 5,
+    "warningCount": 0,
+    "infoCount": 22,
+    "findings": [
+      {
+        "code": "content_overlap",
+        "severity": "error",
+        "time": 2.366,
+        "selector": "#a1n",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 313.75,
+          "top": 550.16,
+          "right": 766.23,
+          "bottom": 1244.16,
+          "width": 452.48,
+          "height": 694
+        },
+        "containerSelector": "#a2n",
+        "text": "5",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 313.75,
+          "y": 550.16,
+          "width": 452.48,
+          "height": 694
+        },
+        "firstSeen": 1.189,
+        "lastSeen": 2.855,
+        "occurrences": 9,
+        "heldMs": 1666,
+        "times": [
+          1.189,
+          1.427,
+          1.665,
+          1.903,
+          2.141,
+          2.366,
+          2.379,
+          2.617,
+          2.855
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "error",
+        "time": 2.366,
+        "selector": "#a1w",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 163.61,
+          "top": 1148.16,
+          "right": 916.38,
+          "bottom": 1276.16,
+          "width": 752.77,
+          "height": 128
+        },
+        "containerSelector": "#a2w",
+        "text": "ЗУСТРІЧЕЙ",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 163.61,
+          "y": 1148.16,
+          "width": 752.77,
+          "height": 128
+        },
+        "firstSeen": 1.189,
+        "lastSeen": 2.855,
+        "occurrences": 9,
+        "heldMs": 1666,
+        "times": [
+          1.189,
+          1.427,
+          1.665,
+          1.903,
+          2.141,
+          2.366,
+          2.379,
+          2.617,
+          2.855
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "error",
+        "time": 2.366,
+        "selector": "#a2n",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 303.39,
+          "top": 550.16,
+          "right": 776.59,
+          "bottom": 1244.16,
+          "width": 473.2,
+          "height": 694
+        },
+        "containerSelector": "#a3n",
+        "text": "2",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 303.39,
+          "y": 550.16,
+          "width": 473.2,
+          "height": 694
+        },
+        "firstSeen": 2.141,
+        "lastSeen": 2.855,
+        "occurrences": 5,
+        "heldMs": 714,
+        "times": [
+          2.141,
+          2.366,
+          2.379,
+          2.617,
+          2.855
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "error",
+        "time": 2.366,
+        "selector": "#a2w",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 134.34,
+          "top": 1148.16,
+          "right": 945.66,
+          "bottom": 1276.16,
+          "width": 811.32,
+          "height": 128
+        },
+        "containerSelector": "#a3w > span:nth-of-type(1)",
+        "text": "КАЛЕНДАРІ",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 134.34,
+          "y": 1148.16,
+          "width": 811.32,
+          "height": 128
+        },
+        "firstSeen": 2.141,
+        "lastSeen": 2.855,
+        "occurrences": 5,
+        "heldMs": 714,
+        "times": [
+          2.141,
+          2.366,
+          2.379,
+          2.617,
+          2.855
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "error",
+        "time": 11.828,
+        "selector": "#c-ph-b > span:nth-of-type(13)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 240,
+          "top": 1391.38,
+          "right": 694.14,
+          "bottom": 1430.38,
+          "width": 454.14,
+          "height": 39
+        },
+        "containerSelector": "#c-star-t",
+        "text": "• Презентація для інвесторів",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/c.html",
+        "bbox": {
+          "x": 240,
+          "y": 1391.38,
+          "width": 454.14,
+          "height": 39
+        },
+        "firstSeen": 10.229,
+        "lastSeen": 12.37,
+        "occurrences": 11,
+        "heldMs": 2141,
+        "times": [
+          10.229,
+          10.467,
+          10.705,
+          10.943,
+          11.18,
+          11.418,
+          11.656,
+          11.828,
+          11.894,
+          12.132,
+          12.37
+        ]
+      },
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 2.366,
+        "selector": "#a1n",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 313.75,
+          "top": 550.16,
+          "right": 766.23,
+          "bottom": 1244.16,
+          "width": 452.48,
+          "height": 694
+        },
+        "containerSelector": "#a3",
+        "text": "5",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 1,
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 313.75,
+          "y": 550.16,
+          "width": 452.48,
+          "height": 694
+        },
+        "firstSeen": 2.366,
+        "lastSeen": 2.366,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          2.366
+        ]
+      },
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 2.366,
+        "selector": "#a1w",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 163.61,
+          "top": 1148.16,
+          "right": 916.38,
+          "bottom": 1276.16,
+          "width": 752.77,
+          "height": 128
+        },
+        "containerSelector": "#a3",
+        "text": "зустрічей",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 1,
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 163.61,
+          "y": 1148.16,
+          "width": 752.77,
+          "height": 128
+        },
+        "firstSeen": 2.366,
+        "lastSeen": 2.366,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          2.366
+        ]
+      },
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 2.366,
+        "selector": "#a2n",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 303.39,
+          "top": 550.16,
+          "right": 776.59,
+          "bottom": 1244.16,
+          "width": 473.2,
+          "height": 694
+        },
+        "containerSelector": "#a3",
+        "text": "2",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 1,
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 303.39,
+          "y": 550.16,
+          "width": 473.2,
+          "height": 694
+        },
+        "firstSeen": 2.366,
+        "lastSeen": 2.366,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          2.366
+        ]
+      },
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 2.366,
+        "selector": "#a2w",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 134.34,
+          "top": 1148.16,
+          "right": 945.66,
+          "bottom": 1276.16,
+          "width": 811.31,
+          "height": 128
+        },
+        "containerSelector": "#a3",
+        "text": "календарі",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 1,
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 134.34,
+          "y": 1148.16,
+          "width": 811.31,
+          "height": 128
+        },
+        "firstSeen": 2.366,
+        "lastSeen": 2.366,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          2.366
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 7.097,
+        "selector": "#c-ph",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 160,
+          "top": 1234.26,
+          "right": 920,
+          "bottom": 2774.26,
+          "width": 760,
+          "height": 1540
+        },
+        "containerSelector": "#c > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 854.26
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/c.html",
+        "bbox": {
+          "x": 160,
+          "y": 1234.26,
+          "width": 760,
+          "height": 1540
+        },
+        "firstSeen": 7.097,
+        "lastSeen": 11.828,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          7.097,
+          11.828
+        ]
+      },
+      {
+        "code": "panel_out_of_canvas",
+        "severity": "info",
+        "time": 7.097,
+        "selector": "#c-ph",
+        "message": "Painted panel extends outside the composition canvas.",
+        "rect": {
+          "left": 160,
+          "top": 1234.26,
+          "right": 920,
+          "bottom": 2774.26,
+          "width": 760,
+          "height": 1540
+        },
+        "containerSelector": "#root",
+        "text": "Асистент бот ☀️ Доброго ранку! ср, 28 жовт. 🗓 Г",
+        "fixHint": "Move the panel inward, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 854.26
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/c.html",
+        "bbox": {
+          "x": 160,
+          "y": 1234.26,
+          "width": 760,
+          "height": 1540
+        },
+        "firstSeen": 7.097,
+        "lastSeen": 11.828,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          7.097,
+          11.828
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 11.828,
+        "selector": "#c-star",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 475.71,
+          "top": 1135.71,
+          "right": 1084.29,
+          "bottom": 1744.29,
+          "width": 608.58,
+          "height": 608.58
+        },
+        "containerSelector": "#c > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 4.29
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/c.html",
+        "bbox": {
+          "x": 475.71,
+          "y": 1135.71,
+          "width": 608.58,
+          "height": 608.58
+        },
+        "firstSeen": 11.828,
+        "lastSeen": 11.828,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          11.828
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 13.084,
+        "selector": "#d-k1",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 72,
+          "top": 264,
+          "right": 751.42,
+          "bottom": 379,
+          "width": 679.42,
+          "height": 115
+        },
+        "containerSelector": "#d-k2 > span:nth-of-type(4)",
+        "text": "ТИ ПРОСТО",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {},
+        "sourceFile": "compositions/d.html",
+        "bbox": {
+          "x": 72,
+          "y": 264,
+          "width": 679.42,
+          "height": 115
+        },
+        "firstSeen": 13.084,
+        "lastSeen": 13.084,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          13.084
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 16.559,
+        "selector": "#d-cur",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 1200,
+          "top": 1900,
+          "right": 1292,
+          "bottom": 2018,
+          "width": 92,
+          "height": 118
+        },
+        "containerSelector": "#d > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 212,
+          "bottom": 98
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/d.html",
+        "bbox": {
+          "x": 1200,
+          "y": 1900,
+          "width": 92,
+          "height": 118
+        },
+        "firstSeen": 16.559,
+        "lastSeen": 16.559,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          16.559
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(2) > div:nth-of-type(1)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 108,
+          "top": 2133.5,
+          "right": 289.75,
+          "bottom": 2179.5,
+          "width": 181.75,
+          "height": 46
+        },
+        "containerSelector": "#root",
+        "text": "Подорожі",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 259.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 108,
+          "y": 2133.5,
+          "width": 181.75,
+          "height": 46
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(2) > div:nth-of-type(1) > small:nth-of-type(1)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 108,
+          "top": 2183.5,
+          "right": 363.91,
+          "bottom": 2214.5,
+          "width": 255.91,
+          "height": 31
+        },
+        "containerSelector": "#root",
+        "text": "27 жовт. · Інвестори",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 294.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 108,
+          "y": 2183.5,
+          "width": 255.91,
+          "height": 31
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(2) > div:nth-of-type(2)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 829.19,
+          "top": 2151.5,
+          "right": 972,
+          "bottom": 2196.5,
+          "width": 142.81,
+          "height": 45
+        },
+        "containerSelector": "#root",
+        "text": "−310,00",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 276.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 829.19,
+          "y": 2151.5,
+          "width": 142.81,
+          "height": 45
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(3) > div:nth-of-type(1)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 108,
+          "top": 2252.5,
+          "right": 256.03,
+          "bottom": 2298.5,
+          "width": 148.03,
+          "height": 46
+        },
+        "containerSelector": "#root",
+        "text": "Сервіси",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 378.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 108,
+          "y": 2252.5,
+          "width": 148.03,
+          "height": 46
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(3) > div:nth-of-type(1) > small:nth-of-type(1)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 108,
+          "top": 2302.5,
+          "right": 454.03,
+          "bottom": 2333.5,
+          "width": 346.03,
+          "height": 31
+        },
+        "containerSelector": "#root",
+        "text": "24 жовт. · Запуск продукту",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 413.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 108,
+          "y": 2302.5,
+          "width": 346.03,
+          "height": 31
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list > div:nth-of-type(3) > div:nth-of-type(2)",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 829.19,
+          "top": 2270.5,
+          "right": 972,
+          "bottom": 2315.5,
+          "width": 142.81,
+          "height": 45
+        },
+        "containerSelector": "#root",
+        "text": "−129,00",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 395.5
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 829.19,
+          "y": 2270.5,
+          "width": 142.81,
+          "height": 45
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 21.291,
+        "selector": "#e-list",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 72,
+          "top": 1980,
+          "right": 1008,
+          "bottom": 2370,
+          "width": 936,
+          "height": 390
+        },
+        "containerSelector": "#e > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 450
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 72,
+          "y": 1980,
+          "width": 936,
+          "height": 390
+        },
+        "firstSeen": 21.291,
+        "lastSeen": 21.291,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          21.291
+        ]
+      },
+      {
+        "code": "text_box_overflow",
+        "severity": "info",
+        "time": 26.022,
+        "selector": "#f-w1",
+        "message": "Text extends outside its nearest visual/container box.",
+        "rect": {
+          "left": 0.05,
+          "top": 866.14,
+          "right": 1319.89,
+          "bottom": 947.86,
+          "width": 1319.84,
+          "height": 81.72
+        },
+        "containerSelector": "#f > div:nth-of-type(1)",
+        "text": "Google Calendar",
+        "fixHint": "Text is 1320px x 82px inside 1080px x 1920px and overflows by up to 240px; widen the container to at least ~1320px or shrink font-size from 104px to ~85px, or allow wrapping with max-width/fitTextFontSize.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 239.89
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/f.html",
+        "bbox": {
+          "x": 0.05,
+          "y": 866.14,
+          "width": 1319.84,
+          "height": 81.72
+        },
+        "firstSeen": 26.022,
+        "lastSeen": 26.022,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          26.022
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 26.022,
+        "selector": "#f-w1",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 0.05,
+          "top": 843.01,
+          "right": 1319.89,
+          "bottom": 970.99,
+          "width": 1319.84,
+          "height": 127.98
+        },
+        "containerSelector": "#root",
+        "text": "Google Calendar",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 239.89
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/f.html",
+        "bbox": {
+          "x": 0.05,
+          "y": 843.01,
+          "width": 1319.84,
+          "height": 127.98
+        },
+        "firstSeen": 26.022,
+        "lastSeen": 26.022,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          26.022
+        ]
+      },
+      {
+        "code": "text_box_overflow",
+        "severity": "info",
+        "time": 35.484,
+        "selector": "#g-clock",
+        "message": "Text extends outside its nearest visual/container box.",
+        "rect": {
+          "left": 0,
+          "top": 269.6,
+          "right": 1185.91,
+          "bottom": 505.4,
+          "width": 1185.91,
+          "height": 235.8
+        },
+        "containerSelector": "#g > div:nth-of-type(1)",
+        "text": "20:00",
+        "fixHint": "Text is 1186px x 236px inside 1080px x 1920px and overflows by up to 106px; widen the container to at least ~1186px or shrink font-size from 300px to ~273px, or allow wrapping with max-width/fitTextFontSize.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 105.91
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/g.html",
+        "bbox": {
+          "x": 0,
+          "y": 269.6,
+          "width": 1185.91,
+          "height": 235.8
+        },
+        "firstSeen": 35.484,
+        "lastSeen": 35.484,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          35.484
+        ]
+      },
+      {
+        "code": "canvas_overflow",
+        "severity": "info",
+        "time": 35.484,
+        "selector": "#g-clock",
+        "message": "Text extends outside the composition canvas.",
+        "rect": {
+          "left": 0,
+          "top": 202,
+          "right": 1185.91,
+          "bottom": 573,
+          "width": 1185.91,
+          "height": 371
+        },
+        "containerSelector": "#root",
+        "text": "20:00",
+        "fixHint": "Move the text inward, reduce its size, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "right": 105.91
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/g.html",
+        "bbox": {
+          "x": 0,
+          "y": 202,
+          "width": 1185.91,
+          "height": 371
+        },
+        "firstSeen": 35.484,
+        "lastSeen": 35.484,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          35.484
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 35.484,
+        "selector": "#g-ph",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 160,
+          "top": 800,
+          "right": 920,
+          "bottom": 2340,
+          "width": 760,
+          "height": 1540
+        },
+        "containerSelector": "#g > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 420
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/g.html",
+        "bbox": {
+          "x": 160,
+          "y": 800,
+          "width": 760,
+          "height": 1540
+        },
+        "firstSeen": 35.484,
+        "lastSeen": 35.484,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          35.484
+        ]
+      },
+      {
+        "code": "panel_out_of_canvas",
+        "severity": "info",
+        "time": 35.484,
+        "selector": "#g-ph",
+        "message": "Painted panel extends outside the composition canvas.",
+        "rect": {
+          "left": 160,
+          "top": 800,
+          "right": 920,
+          "bottom": 2340,
+          "width": 760,
+          "height": 1540
+        },
+        "containerSelector": "#root",
+        "text": "Асистент бот 🌙 Підсумок дня, ср, 28 жовт. ✅ Зав",
+        "fixHint": "Move the panel inward, or mark intentional off-canvas animation with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 1920,
+          "width": 1080,
+          "height": 1920
+        },
+        "overflow": {
+          "bottom": 420
+        },
+        "dataAttributes": {},
+        "sourceFile": "compositions/g.html",
+        "bbox": {
+          "x": 160,
+          "y": 800,
+          "width": 760,
+          "height": 1540
+        },
+        "firstSeen": 35.484,
+        "lastSeen": 35.484,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          35.484
+        ]
+      }
+    ],
+    "duration": 42.581,
+    "samples": [
+      2.366,
+      7.097,
+      11.828,
+      16.559,
+      21.291,
+      26.022,
+      30.753,
+      35.484,
+      40.215
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 27,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 2,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 2.74:1; WCAG AA requires 3:1.",
+        "text": "2",
+        "fg": "rgb(11,11,15)",
+        "bg": "rgb(58,43,252)",
+        "ratio": 2.74,
+        "requiredRatio": 3,
+        "suggestedColor": "rgb(168,168,169)",
+        "large": true,
+        "selector": "#a2n",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 303.390625,
+          "y": 659.15625,
+          "width": 473.203125,
+          "height": 476
+        },
+        "time": 2.366,
+        "times": [
+          2.366
+        ]
+      },
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 2.74:1; WCAG AA requires 3:1.",
+        "text": "календарі",
+        "fg": "rgb(11,11,15)",
+        "bg": "rgb(58,43,252)",
+        "ratio": 2.74,
+        "requiredRatio": 3,
+        "suggestedColor": "rgb(168,168,169)",
+        "large": true,
+        "selector": "#a2w",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 134.34375,
+          "y": 1165.15625,
+          "width": 811.3125,
+          "height": 95.671875
+        },
+        "time": 2.366,
+        "times": [
+          2.366
+        ]
+      }
+    ],
+    "enabled": true,
+    "samples": [
+      2.366,
+      11.828,
+      21.291,
+      30.753,
+      40.215
+    ],
+    "checked": 45,
+    "passed": 43
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 8,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "film_silent",
+        "severity": "warning",
+        "message": "This 43 s film has no sound source (no <audio>, no <video> with sound): add a music bed and sounds on the visible actions unless the person asked for silence; see references/sound.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0
+      },
+      {
+        "code": "line_unread",
+        "severity": "warning",
+        "message": "\"н а к л а д к а\" (8 words) is on screen 0.83 s (±0.01 s), under its 2.17 s floor: hold it about 0.5 s + 0.3 s a word (2.90 s here) before it leaves or changes; see references/motion.md.",
+        "text": "н а к л а д к а",
+        "selector": "#a3w",
+        "dataAttributes": {},
+        "sourceFile": "compositions/a.html",
+        "bbox": {
+          "x": 135.72,
+          "y": 1105.2,
+          "width": 209.91,
+          "height": 148.4599999999998
+        },
+        "time": 2.084,
+        "words": 8,
+        "seconds": 0.835,
+        "floorSeconds": 2.175
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and \"01\" renders at 26 px for 5.62 s: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "01",
+        "selector": "#c > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/c.html",
+        "bbox": {
+          "x": 86,
+          "y": 200.5,
+          "width": 31.55,
+          "height": 31
+        },
+        "time": 6.868,
+        "times": [
+          6.868
+        ],
+        "fontPx": 26,
+        "floorPx": 28,
+        "seconds": 5.619,
+        "elements": [
+          {
+            "selector": "#c > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+            "text": "01",
+            "fontPx": 26,
+            "time": 6.868,
+            "seconds": 5.619
+          }
+        ]
+      },
+      {
+        "code": "line_unread",
+        "severity": "warning",
+        "message": "\"Перенести «Презентація для інвесторів» на 29.10, 10:00\" (9 words) is on screen 1.31 s (±0.01 s), under its 2.40 s floor: hold it about 0.5 s + 0.3 s a word (3.20 s here) before it leaves or changes; see references/motion.md.",
+        "text": "Перенести «Презентація для інвесторів» на 29.10, 10:00",
+        "selector": "#d-sum",
+        "dataAttributes": {},
+        "sourceFile": "compositions/d.html",
+        "bbox": {
+          "x": 158.22,
+          "y": 1222.54,
+          "width": 557.54,
+          "height": 95.98000000000002
+        },
+        "time": 16.639,
+        "words": 9,
+        "seconds": 1.311,
+        "floorSeconds": 2.4
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 3 text elements stay under it for 0.5 s or more, the smallest \"Перенесення\" at 24 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "Перенесення",
+        "selector": "#d-lab",
+        "dataAttributes": {},
+        "sourceFile": "compositions/d.html",
+        "bbox": {
+          "x": 158.22,
+          "y": 1180.72,
+          "width": 259.55,
+          "height": 28.18
+        },
+        "time": 16.733,
+        "times": [
+          12.612,
+          12.612,
+          16.733
+        ],
+        "fontPx": 23.63,
+        "floorPx": 28,
+        "seconds": 1.249,
+        "elements": [
+          {
+            "selector": "#d-lab",
+            "text": "Перенесення",
+            "fontPx": 23.63,
+            "time": 16.733,
+            "seconds": 1.249
+          },
+          {
+            "selector": "#d > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+            "text": "02",
+            "fontPx": 26,
+            "time": 12.612,
+            "seconds": 7.742
+          },
+          {
+            "selector": "small.mono",
+            "text": "> ГОЛОС",
+            "fontPx": 26,
+            "time": 12.612,
+            "seconds": 5.744
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 5 text elements stay under it for 0.5 s or more, the smallest \"✓ записано\" at 22 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "✓ записано",
+        "selector": "span.e-ok",
+        "dataAttributes": {},
+        "sourceFile": "compositions/e.html",
+        "bbox": {
+          "x": 622.81,
+          "y": 1046,
+          "width": 167.36,
+          "height": 26
+        },
+        "time": 22.352,
+        "times": [
+          20.354,
+          21.852,
+          21.852,
+          22.352,
+          22.352
+        ],
+        "fontPx": 22,
+        "floorPx": 28,
+        "seconds": 2.622,
+        "elements": [
+          {
+            "selector": "span.e-ok",
+            "text": "✓ записано",
+            "fontPx": 22,
+            "time": 22.352,
+            "seconds": 2.622
+          },
+          {
+            "selector": "#e > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+            "text": "03",
+            "fontPx": 26,
+            "time": 20.354,
+            "seconds": 4.62
+          },
+          {
+            "selector": "#e-list > div:nth-of-type(2) > div:nth-of-type(1) > small:nth-of-type(1)",
+            "text": "27 жовт. · Інвестори",
+            "fontPx": 26,
+            "time": 21.852,
+            "seconds": 3.122
+          },
+          {
+            "selector": "#e-list > div:nth-of-type(3) > div:nth-of-type(1) > small:nth-of-type(1)",
+            "text": "24 жовт. · Запуск продукту",
+            "fontPx": 26,
+            "time": 21.852,
+            "seconds": 3.122
+          },
+          {
+            "selector": "#e-new > div:nth-of-type(1) > small:nth-of-type(1)",
+            "text": "28 жовт. · особисте",
+            "fontPx": 26,
+            "time": 22.352,
+            "seconds": 2.622
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and \"04\" renders at 26 px for 3.87 s: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "04",
+        "selector": "#g > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+        "dataAttributes": {},
+        "sourceFile": "compositions/g.html",
+        "bbox": {
+          "x": 86,
+          "y": 200.5,
+          "width": 37.98,
+          "height": 31
+        },
+        "time": 31.967,
+        "times": [
+          31.967
+        ],
+        "fontPx": 26,
+        "floorPx": 28,
+        "seconds": 3.871,
+        "elements": [
+          {
+            "selector": "#g > div:nth-of-type(1) > div:nth-of-type(2) > b:nth-of-type(1)",
+            "text": "04",
+            "fontPx": 26,
+            "time": 31.967,
+            "seconds": 3.871
+          }
+        ]
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 4 text elements stay under it for 0.5 s or more, the smallest \"модулів у договорі\" at 26 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "модулів у договорі",
+        "selector": "#h-l0",
+        "dataAttributes": {},
+        "sourceFile": "compositions/h.html",
+        "bbox": {
+          "x": 72,
+          "y": 560,
+          "width": 447.36,
+          "height": 31
+        },
+        "time": 36.088,
+        "times": [
+          36.088,
+          36.587,
+          37.087,
+          37.586
+        ],
+        "fontPx": 26,
+        "floorPx": 28,
+        "seconds": 2.622,
+        "elements": [
+          {
+            "selector": "#h-l0",
+            "text": "модулів у договорі",
+            "fontPx": 26,
+            "time": 36.088,
+            "seconds": 2.622
+          },
+          {
+            "selector": "#h-l1",
+            "text": "інструментів агента",
+            "fontPx": 26,
+            "time": 36.587,
+            "seconds": 2.123
+          },
+          {
+            "selector": "#h-l2",
+            "text": "автотестів",
+            "fontPx": 26,
+            "time": 37.087,
+            "seconds": 1.623
+          },
+          {
+            "selector": "#h-l3",
+            "text": "днів до запуску",
+            "fontPx": 26,
+            "time": 37.586,
+            "seconds": 1.124
+          }
+        ]
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 341
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 1,
+    "findings": [
+      {
+        "code": "audio_none",
+        "severity": "info",
+        "message": "The film has no sound: no clip in it plays audio.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0
+      }
+    ]
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

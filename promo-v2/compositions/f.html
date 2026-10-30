@@ -1,0 +1,92 @@
+<template>
+  <style>
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-cyrillic.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Inter'; src: url('assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 400 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-cyrillic.woff2') format('woff2'); font-weight: 500; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'JetBrains Mono'; src: url('assets/fonts/jetbrainsmono-latin.woff2') format('woff2'); font-weight: 500; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-cyrillic.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Unbounded'; src: url('assets/fonts/unbounded-latin.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+#root { position: absolute; inset: 0; overflow: hidden; font-family: 'Inter', sans-serif; color: #0B0B0F; }
+.full { position: absolute; inset: 0; }
+.kin { font-family: 'Unbounded', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 0.92; }
+.h1 { font-weight: 900; letter-spacing: -0.045em; line-height: 1.02; }
+.hl { background: #3A2BFC; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hl-ink { background: #0B0B0F; color: #fff; padding: 0 0.12em 0.04em; border-radius: 0.14em; }
+.caps { font-weight: 700; text-transform: uppercase; letter-spacing: 0.32em; }
+.mono { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.hdr { position: absolute; left: 72px; right: 72px; top: 64px; height: 44px; display: flex; align-items: center; justify-content: space-between; }
+.hdr img { height: 40px; }
+.dashes { display: flex; gap: 10px; }
+.dashes i { display: block; width: 46px; height: 8px; border-radius: 4px; background: currentColor; opacity: 0.18; }
+.dashes i.on { background: #3A2BFC; opacity: 1; }
+.chip { position: absolute; left: 72px; top: 196px; display: flex; align-items: center; gap: 18px; font-size: 28px; }
+.chip b { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 14px; border-radius: 8px; background: #3A2BFC; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: 0.04em; }
+/* the phone: a black body with the Telegram-style chat of the assistant */
+.phone { position: absolute; width: 760px; height: 1540px; border-radius: 108px; background: #0A0A0C; padding: 18px; box-shadow: 0 60px 120px rgb(10 10 30 / 0.35), inset 0 0 0 2px rgb(255 255 255 / 0.16); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 92px; overflow: hidden; background: #0E1013; }
+.island { position: absolute; left: 50%; top: 22px; width: 190px; height: 54px; margin-left: -95px; border-radius: 27px; background: #000; z-index: 3; }
+.tg-top { position: absolute; left: 0; right: 0; top: 0; height: 200px; padding: 104px 36px 0; background: #17191D; display: flex; align-items: center; gap: 20px; color: #fff; }
+.tg-ava { width: 72px; height: 72px; border-radius: 50%; background: #3A2BFC url('assets/ai-insider-mark-white.png') center / 56% no-repeat; }
+.tg-name { font-weight: 700; font-size: 36px; line-height: 1.1; }
+.tg-sub { font-size: 28px; color: #8A8F98; }
+.bubble { position: absolute; left: 30px; right: 70px; background: #1F2227; color: #E9EBEF; border-radius: 34px 34px 34px 10px; padding: 28px 32px; font-size: 32px; line-height: 1.42; }
+.bubble b { color: #fff; font-weight: 700; }
+.ln { display: block; }
+.gap { display: block; height: 18px; }
+
+    #root { background: #0B0B0F; }
+
+    #f-rings { position: absolute; inset: 0; }
+    .f-word { position: absolute; left: 0; right: 0; top: 860px; text-align: center; color: #fff; font-size: 104px; white-space: nowrap; }
+    #f-last { position: absolute; left: 0; right: 0; top: 820px; text-align: center; font-size: 128px; color: #fff; }
+
+  </style>
+  <div id="root" data-composition-id="f" data-width="1080" data-height="1920">
+
+    <svg id="f-rings" viewBox="0 0 1080 1920" data-layout-ignore><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray=""/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="14 18"/><circle class="f-ring" cx="540" cy="960" r="100" fill="none" stroke="#3A2BFC" stroke-width="7" stroke-dasharray=""/></svg>
+    <div class="f-word kin" id="f-w0" style="font-size:120px">Notion</div><div class="f-word kin" id="f-w1" style="font-size:78px">Google Calendar</div><div class="f-word kin" id="f-w2" style="font-size:120px">Telegram</div><div class="f-word kin" id="f-w3" style="font-size:120px">Instagram</div><div class="f-word kin" id="f-w4" style="font-size:120px">YouTube</div><div class="f-word kin" id="f-w5" style="font-size:120px">ChatGPT</div><div class="f-word kin" id="f-w6" style="font-size:120px">Dot</div><div class="f-word kin" id="f-w7" style="font-size:120px">Голос</div><div class="f-word kin" id="f-w8" style="font-size:120px">Звіти</div><div class="f-word kin" id="f-w9" style="font-size:120px">Фінанси</div><div class="f-word kin" id="f-w10" style="font-size:120px">Події</div><div class="f-word kin" id="f-w11" style="font-size:120px">Памʼять</div>
+    <div id="f-last" class="h1"><span class="hl">один асистент</span></div>
+
+  </div>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    const SCENE = 6.774; const BEAT = 0.48387; const B = (k) => Math.max(0, 0.48387 * k + 0.0003);
+    const R = document.querySelector('[data-composition-id="f"]');
+    const $ = (s) => R.querySelectorAll(s);
+    // slam: arrives big and blurred, lands hard
+    const slam = (s, at, from = 1.6) => tl.fromTo(s, { opacity: 0, scale: from, filter: 'blur(14px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.16, ease: 'expo.out' }, at);
+    // per-word blur-in, no travel
+    const words = (s, at, gap = 0.06) => tl.fromTo(s, { opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)', duration: 0.14, stagger: gap, ease: 'power2.out' }, at);
+    // whip out sideways with a smear
+    const whip = (s, at, x = -1300) => tl.to(s, { x, filter: 'blur(18px)', duration: 0.22, ease: 'power3.in' }, at);
+
+    // the camera flies through the rings; each ring's depth is a function of time
+    const rings = $('.f-ring');
+    const fly = { t: 0 };
+    const place = () => {
+      const t = fly.t;
+      const speed = 0.55 + 0.9 * Math.min(1, t / SCENE);
+      rings.forEach((c, i) => {
+        const z = ((i / 14) + t * speed * 0.5) % 1;      // 0 far .. 1 passing the camera
+        const r = 40 / (1.03 - z);
+        c.setAttribute('r', r.toFixed(1));
+        c.setAttribute('opacity', (Math.min(1, z * 3) * (1 - Math.max(0, z - 0.85) / 0.15)).toFixed(3));
+      });
+    };
+    tl.to(fly, { t: SCENE, duration: SCENE, ease: 'none', onUpdate: place }, 0);
+    place();
+    // one module per beat, each slams and blurs out
+    const W = $('.f-word');
+    W.forEach((w, i) => {
+      const at = B(i);
+      tl.fromTo(w, { opacity: 0, scale: 2.4, filter: 'blur(16px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.12, ease: 'expo.out' }, at);
+      tl.to(w, { opacity: 0, scale: 0.55, filter: 'blur(10px)', duration: 0.12, ease: 'power2.in' }, at + BEAT - 0.12);
+    });
+    slam('#f-last', B(W.length) + 0.02, 1.8);
+    whip('#f-last', SCENE - 0.22, 0);
+    tl.to('#f-last', { y: -1400, duration: 0.22, ease: 'power3.in' }, SCENE - 0.22);
+
+    window.__timelines['f'] = tl;
+  </script>
+</template>

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runPending } from '../src/actions.js';
 import { Agent } from '../src/agent/agent.js';
 import { applyIntegrations } from '../src/integrations/runtime.js';
+import { GoogleCalendar } from '../src/integrations/google-calendar.js';
 import { buildServer } from '../src/server.js';
 import { IntegrationStore } from '../src/store/integrations.js';
 import { registerWeb } from '../src/web/api.js';
@@ -96,6 +97,37 @@ describe('Notion wizard', () => {
 
     await app.inject({ method: 'PATCH', url: '/api/integrations/notion', headers: H, payload: { readOnly: false } });
     expect((await env.s.integrations!.get()).notion?.readOnly).toBe(false);
+  });
+});
+
+describe('Google calendar: shared calendars, read-only', () => {
+  it('reads the chosen (shared) calendar instead of primary', async () => {
+    const urls: string[] = [];
+    const auth = { authedJson: async (_slot: string, url: string) => (urls.push(url), url.includes('calendarList') ? { items: [{ id: 'irina@gmail.com', summary: 'Ірина', accessRole: 'reader' }, { id: 'me@gmail.com', summary: 'me', primary: true, accessRole: 'owner' }] } : { items: [] }) };
+    const cal = new GoogleCalendar(auth as never, (a) => (a === 'work' ? 'irina@gmail.com' : 'primary'));
+    await cal.list('work', '2026-10-30T00:00:00Z', '2026-10-31T00:00:00Z');
+    await cal.list('personal', '2026-10-30T00:00:00Z', '2026-10-31T00:00:00Z');
+    expect(urls[0]).toContain('/calendars/irina%40gmail.com/events');
+    expect(urls[1]).toContain('/calendars/primary/events');
+    expect(await cal.calendars('work')).toEqual([
+      { id: 'irina@gmail.com', name: 'Ірина', primary: false, access: 'reader' },
+      { id: 'me@gmail.com', name: 'me', primary: true, access: 'owner' },
+    ]);
+  });
+
+  it('once Google is set up from the cabinet, the agent may not create events until writes are allowed', async () => {
+    const { env, app, H } = await setup();
+    await env.s.integrations!.patch('google', { clientId: 'cid.apps.googleusercontent.com', clientSecret: 'sec' });
+    env.llm.script.push(toolCall('calendar_create', { title: 'Зустріч', start: `${env.s.clock().toISOString().slice(0, 10)}T15:00`, end: `${env.s.clock().toISOString().slice(0, 10)}T16:00` }), (m) => {
+      expect(JSON.stringify(m.at(-1))).toContain('read_only');
+      return say('Календар поки лише на читання.');
+    });
+    expect((await new Agent(env.s).handle(42, 'постав зустріч о 15')).proposals).toHaveLength(0);
+
+    const v = (await app.inject({ method: 'PATCH', url: '/api/integrations/google', headers: H, payload: { calendars: { work: 'irina@gmail.com' } } })).json();
+    expect(v.google).toMatchObject({ readOnly: true, calendars: { work: 'irina@gmail.com', personal: 'primary' } });
+    await app.inject({ method: 'PATCH', url: '/api/integrations/google', headers: H, payload: { readOnly: false } });
+    expect((await env.s.integrations!.get()).google).toMatchObject({ readOnly: false, calendars: { work: 'irina@gmail.com' }, clientSecret: 'sec' });
   });
 });
 

@@ -3,7 +3,7 @@ import type { Account } from './integrations/google-calendar.js';
 import { errMsg } from './lib/log.js';
 import { NotConnected, type Services } from './services.js';
 import { callWebhook, mcpCallTool } from './integrations/mcp.js';
-import { notionWritable } from './integrations/runtime.js';
+import { calendarWritable, notionWritable } from './integrations/runtime.js';
 
 /**
  * Everything that changes the owner's data runs here, and only after the owner pressed "Підтвердити"
@@ -150,6 +150,10 @@ export async function runPending(s: Services, id: string): Promise<{ ok: boolean
   if (!action) return { ok: false, text: 'Цю дію вже оброблено або вона застаріла.', claimed: false };
   const exec = EXECUTORS[action.kind as ActionKind] as ((s: Services, p: unknown) => Promise<string>) | undefined;
   const touchesNotion = !action.kind.startsWith('calendar.') && !action.kind.startsWith('plan.') && !action.kind.startsWith('custom.');
+  if (!touchesNotion && (action.kind.startsWith('calendar.') || action.kind.startsWith('plan.')) && !(await calendarWritable(s))) {
+    await s.pending.finish(id, 'failed', 'calendar read-only');
+    return { ok: false, text: 'Календар підключено лише на читання — запис вимкнено в налаштуваннях.', claimed: true };
+  }
   if (touchesNotion && !(await notionWritable(s))) {
     await s.pending.finish(id, 'failed', 'Notion read-only');
     return { ok: false, text: 'Notion підключено лише на читання — запис вимкнено в налаштуваннях.', claimed: true };
