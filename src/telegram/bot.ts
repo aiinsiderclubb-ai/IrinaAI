@@ -5,6 +5,7 @@ import type { Agent, AgentReply } from '../agent/agent.js';
 import { webUrl } from '../config.js';
 import { signState } from '../lib/crypto.js';
 import { isPhantomTranscript, transcriptionHint } from '../lib/wake.js';
+import { mdToTelegramHtml, stripMd } from '../lib/tg-html.js';
 import { createLoginToken } from '../web/auth.js';
 import { errMsg } from '../lib/log.js';
 import { classifyImport } from '../modules/importer.js';
@@ -128,13 +129,23 @@ export function createBot(s: Services, agent: Agent): Bot {
     }
   }
 
+  /** the model's Markdown as Telegram HTML; plain text if Telegram rejects the markup */
+  async function sendRich(chatId: number, md: string): Promise<void> {
+    try {
+      await bot.api.sendMessage(chatId, mdToTelegramHtml(md), { parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
+    } catch (e) {
+      s.log.warn('rich_text_rejected', { error: errMsg(e).slice(0, 200) });
+      await bot.api.sendMessage(chatId, stripMd(md), { link_preview_options: { is_disabled: true } });
+    }
+  }
+
   async function deliver(chatId: number, reply: AgentReply, viaVoice: boolean): Promise<void> {
     const { voiceReplies } = await s.settings.get();
     const wantVoice = voiceReplies === 'always' || (voiceReplies === 'mirror' && viaVoice);
     const hasCards = reply.proposals.length > 0;
     if (reply.text) {
       const spoken = wantVoice && !hasCards && reply.text.length <= VOICE_MAX_CHARS && (await sendVoice(chatId, reply.text));
-      if (!spoken) for (const part of chunk(reply.text)) await bot.api.sendMessage(chatId, part, { link_preview_options: { is_disabled: true } });
+      if (!spoken) for (const part of chunk(reply.text)) await sendRich(chatId, part);
     }
     for (const p of reply.proposals) await sendCard(chatId, p);
   }

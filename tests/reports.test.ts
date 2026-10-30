@@ -31,7 +31,7 @@ describe('morning report', () => {
     const html = await buildMorningReport(env.s);
     for (const s of SECTIONS_MORNING) expect(html).toContain(s);
     expect(html).toContain('Скласти бюджет');
-    expect(html).toContain('11:00–12:00 Нарада з командою');
+    expect(html).toContain('<b>11:00–12:00</b>  Нарада з командою');
     expect(html).toContain('Конфлікти');
     expect(html).toContain('Підготуйте бюджет');
     expect(html).toContain('Олена');
@@ -50,7 +50,9 @@ describe('morning report', () => {
       throw new Error('calendar down');
     };
     const html = await buildMorningReport(env.s);
-    for (const s of SECTIONS_MORNING) expect(html).toContain(s);
+    for (const s of ['Графік дня', 'Три головні пріоритети', 'Очікую відповіді', 'Дедлайни найближчих днів']) expect(html).toContain(s);
+    // nothing extra and no prep notes without the model: those sections fold into one line
+    expect(html).toContain('Без новин: додаткові задачі, підготовка до зустрічей');
     expect(html).toContain('Скласти бюджет'); // High priority first
     expect(html).toContain('calendar down');
   });
@@ -65,8 +67,8 @@ describe('evening report', () => {
     await notion.logDecision({ title: 'Запускаємо пілот', project: 'Alpha', owner: 'Іван', due: '2026-10-30' });
     const html = await buildEveningReport(env.s);
     for (const s of SECTIONS_EVENING) expect(html).toContain(s);
-    expect(html).toMatch(/Завершено сьогодні<\/b>\n• Скласти бюджет/);
-    expect(html).toMatch(/Не завершено<\/b>\n• Лист інвестору/);
+    expect(html).toMatch(/Завершено сьогодні<\/b>  ·  1\n<blockquote>✓ Скласти бюджет/);
+    expect(html).toMatch(/Не завершено<\/b>  ·  1\n<blockquote><b>Beta<\/b>\n◦ Лист інвестору  <i>сьогодні<\/i>/);
     expect(html).toContain('Запускаємо пілот');
     expect(html).toContain('Іван');
   });
@@ -172,6 +174,6 @@ describe('social dynamics', () => {
     await saveSnapshot(env.db, snap(1000, '2026-10-16'), '2026-10-16');
     await saveSnapshot(env.db, snap(1042, '2026-10-23'), '2026-10-23');
     env.llm.chat = async () => say('{}');
-    expect(await buildMorningReport(env.s)).toMatch(/Instagram: підписники 1[\s ]?042 \(\+42 за 7 дн\.\)/);
+    expect(await buildMorningReport(env.s)).toMatch(/Instagram: підписники <b>1[\s ]?042<\/b> \(\+42 за 7 дн\.\)/);
   });
 });
