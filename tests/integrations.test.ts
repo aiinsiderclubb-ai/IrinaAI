@@ -273,3 +273,19 @@ describe('Instagram via Facebook Login (business portfolio access)', () => {
     expect(await env.s.instagram!.refreshToken(true)).toBeUndefined();
   });
 });
+
+describe('social refresh', () => {
+  it('takes a snapshot of every connected account now and reports failures per platform', async () => {
+    const { env, app, H } = await setup();
+    await env.s.tokens.save('google:youtube', { refreshToken: 'r', meta: {} });
+    await env.s.tokens.save('instagram', { accessToken: 'a', meta: {} });
+    env.s.youtube = { snapshot: async () => ({ platform: 'youtube', account: 'MLI', takenAt: '', totals: { subscribers: 10 }, period: {}, periodDays: 7, posts: [], unavailable: [] }) } as never;
+    env.s.instagram = { snapshot: async () => { throw new Error('no insights permission'); } } as never;
+    const r = await app.inject({ method: 'POST', url: '/api/social/refresh', headers: H });
+    expect(r.json().results).toEqual([
+      { platform: 'instagram', ok: false, error: 'no insights permission' },
+      { platform: 'youtube', ok: true, account: 'MLI' },
+    ]);
+    expect((await app.inject({ method: 'GET', url: '/api/social', headers: H })).json().accounts[0].data.account).toBe('MLI');
+  });
+});

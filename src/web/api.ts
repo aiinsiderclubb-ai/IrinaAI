@@ -19,7 +19,7 @@ import { buildToday } from '../modules/dashboard.js';
 import { summarize } from '../modules/finance.js';
 import { classifyImport } from '../modules/importer.js';
 import { buildEveningReport, buildMorningReport } from '../modules/reports.js';
-import { diffTotals } from '../modules/social.js';
+import { diffTotals, saveSnapshot } from '../modules/social.js';
 import type { SocialData } from '../integrations/social-types.js';
 import type { Services } from '../services.js';
 import type { PendingAction } from '../store/pending.js';
@@ -385,6 +385,24 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
       out.push({ data: rows[0].data, delta: diffTotals(prev.rows[0]?.data, rows[0].data) });
     }
     return { accounts: out };
+  });
+
+  /** takes the Instagram / YouTube snapshot now instead of waiting for the nightly job */
+  app.post('/api/social/refresh', async () => {
+    const day = DateTime.fromJSDate(s.clock(), { zone: (await s.settings.get()).timezone }).toISODate()!;
+    const connected = await s.tokens.connected();
+    const results: Array<{ platform: string; ok: boolean; account?: string; error?: string }> = [];
+    for (const [platform, client, slot] of [['instagram', s.instagram, 'instagram'], ['youtube', s.youtube, 'google:youtube']] as const) {
+      if (!client || !connected.includes(slot)) continue;
+      try {
+        const data = await client.snapshot(7);
+        await saveSnapshot(s.db, data, day);
+        results.push({ platform, ok: true, account: data.account });
+      } catch (e) {
+        results.push({ platform, ok: false, error: errMsg(e).slice(0, 300) });
+      }
+    }
+    return { results };
   });
 
   app.get<{ Params: { kind: string } }>('/api/reports/:kind', async (req, reply) => {
