@@ -3,6 +3,8 @@ import { api, ApiError } from '../api';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 
 type State = 'on' | 'off' | 'broken' | 'setup';
+type NotionAccess = 'read' | 'create' | 'full';
+const NOTION_ACCESS: Record<NotionAccess, string> = { read: 'лише читання', create: 'читання + нові задачі', full: 'читання і запис' };
 interface McpToolView {
   name: string;
   description: string;
@@ -14,7 +16,7 @@ type CustomView =
   | { id: string; type: 'mcp'; name: string; url: string; authorization?: string; tools: McpToolView[]; enabled: boolean };
 
 interface View {
-  notion: { state: State; token?: string; readOnly: boolean; tasksDb?: string; mapping?: any; contextPages: string[]; helperDbs: Record<string, boolean> };
+  notion: { state: State; token?: string; readOnly: boolean; access: NotionAccess; tasksDb?: string; mapping?: any; contextPages: string[]; helperDbs: Record<string, boolean> };
   google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; readOnly: boolean; calendars: Record<'work' | 'personal', string>; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
   meta: { configured: boolean; appId?: string; appSecret?: string; redirectUri: string; login: 'facebook' | 'instagram'; configId?: string; instagram: { state: State; connectUrl?: string; expiresAt?: string; username?: string } };
   elevenlabs: { state: State; apiKey?: string };
@@ -291,9 +293,13 @@ function NotionSection({ view, setView }: { view: View; setView: (v: View) => vo
       'Налаштовано (лише читання)',
     );
 
-  const setReadOnly = (readOnly: boolean) => {
-    if (!readOnly && !window.confirm('Дозволити асистенту записувати в Notion (задачі, статуси) після вашого підтвердження кожної дії? Переконайтесь, що власниця простору погодила.')) return;
-    void run('notion-ro', () => api.patch<View>('/api/integrations/notion', { readOnly }), readOnly ? 'Notion: лише читання' : 'Запис у Notion увімкнено');
+  const setAccess = (access: NotionAccess) => {
+    const ask: Partial<Record<NotionAccess, string>> = {
+      create: 'Дозволити асистенту створювати нові задачі в Notion? Кожна задача зʼявиться лише після «Підтвердити»; наявні задачі він не змінюватиме. Переконайтесь, що власниця простору погодила.',
+      full: 'Дозволити асистенту змінювати Notion (нові задачі, статуси, дедлайни, рішення) після підтвердження кожної дії? Переконайтесь, що власниця простору погодила.',
+    };
+    if (ask[access] && !window.confirm(ask[access])) return;
+    void run('notion-ro', () => api.patch<View>('/api/integrations/notion', { access }), `Notion: ${NOTION_ACCESS[access]}`);
   };
 
   const dbs = (items ?? []).filter((i) => i.type === 'database');
@@ -303,7 +309,7 @@ function NotionSection({ view, setView }: { view: View; setView: (v: View) => vo
     <Section
       title="Notion"
       hint="Задачі, рішення, фінанси, контекст власника"
-      right={<>{n.token && <span className={`pill ${n.readOnly ? 'pill-setup' : 'pill-on'}`}>{n.readOnly ? 'лише читання' : 'читання і запис'}</span>}<Pill state={n.state} /></>}
+      right={<>{n.token && <span className={`pill ${n.access === 'read' ? 'pill-setup' : 'pill-on'}`}>{NOTION_ACCESS[n.access]}</span>}<Pill state={n.state} /></>}
     >
       <ol className="steps">
         <li>
@@ -383,9 +389,13 @@ function NotionSection({ view, setView }: { view: View; setView: (v: View) => vo
 
       {n.token && (
         <div className="row" style={{ marginTop: 12 }}>
-          <label className="toggle">
-            <input type="checkbox" checked={!n.readOnly} onChange={(e) => setReadOnly(!e.target.checked)} />
-            Дозволити запис у Notion (кожна дія — після «Підтвердити»)
+          <label className="field-label">
+            Доступ асистента (кожен запис — після «Підтвердити»)
+            <select className="input" value={n.access} onChange={(e) => setAccess(e.target.value as NotionAccess)}>
+              <option value="read">Лише читання</option>
+              <option value="create">Читання + створення нових задач</option>
+              <option value="full">Читання і запис (задачі, статуси, рішення)</option>
+            </select>
           </label>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.confirm('Відключити Notion від асистента? У самому Notion нічого не зміниться.') && void run('notion-off', () => api.del<View>('/api/integrations/notion'))}>
             Відключити

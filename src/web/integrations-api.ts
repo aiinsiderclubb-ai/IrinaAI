@@ -51,7 +51,9 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
       notion: {
         state: !s.notionApi ? 'off' : st.notion ? 'on' : 'setup',
         token: mask(ic.notion?.token) ?? (fromEnv(s.cfg.NOTION_TOKEN) ? 'з налаштувань сервера' : undefined),
-        readOnly: ic.notion?.readOnly !== false,
+        // same rule as the runtime (notionAccess): a token from env without cabinet settings is not limited
+        readOnly: ic.notion ? ic.notion.readOnly !== false : false,
+        access: ic.notion ? (ic.notion.access ?? (ic.notion.readOnly === false ? 'full' : 'read')) : 'full',
         tasksDb: st.notion?.tasks.db,
         mapping: st.notion?.tasks,
         contextPages: st.notionContextPages,
@@ -227,9 +229,11 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
     }
   });
 
-  app.patch<{ Body: { readOnly?: boolean } }>('/api/integrations/notion', async (req, reply) => {
-    if (typeof req.body?.readOnly !== 'boolean') return reply.code(400).send({ error: 'readOnly: true | false' });
-    await store.patch('notion', { readOnly: req.body.readOnly });
+  app.patch('/api/integrations/notion', async (req, reply) => {
+    const parsed = z.union([z.object({ access: z.enum(['read', 'create', 'full']) }), z.object({ readOnly: z.boolean() })]).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "access: 'read' | 'create' | 'full'" });
+    const access = 'access' in parsed.data ? parsed.data.access : parsed.data.readOnly ? 'read' : 'full';
+    await store.patch('notion', { access, readOnly: access === 'read' });
     return view();
   });
 

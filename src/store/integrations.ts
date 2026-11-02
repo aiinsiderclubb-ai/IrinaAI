@@ -47,9 +47,19 @@ export type CustomIntegration = WebhookIntegration | McpIntegration;
 /** distributive: id optional for each variant (new items get one) */
 export type CustomDraft = CustomIntegration extends infer T ? (T extends CustomIntegration ? Omit<T, 'id'> & { id?: string } : never) : never;
 
+export type NotionAccess = 'read' | 'create' | 'full';
+
 /** Everything that can be configured from the cabinet. Secrets are encrypted at rest (AES-256-GCM). */
 export interface IntegrationConfig {
-  notion?: { token?: string; tasksDb?: string; contextPages?: string[]; readOnly?: boolean };
+  notion?: {
+    token?: string;
+    tasksDb?: string;
+    contextPages?: string[];
+    /** legacy switch: false = full access; superseded by `access` */
+    readOnly?: boolean;
+    /** read (default) | create = only new tasks | full; every write still waits for «Підтвердити» */
+    access?: NotionAccess;
+  };
   google?: {
     clientId?: string;
     clientSecret?: string;

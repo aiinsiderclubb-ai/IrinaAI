@@ -8,6 +8,7 @@ import { InstagramClient } from './instagram.js';
 import { OpenAi } from './openai.js';
 import { ElevenLabs, OpenAiTts } from './tts.js';
 import { YouTubeClient } from './youtube.js';
+import type { NotionAccess } from '../store/integrations.js';
 
 /**
  * (Re)builds every integration from the cabinet settings, with env vars as fallback.
@@ -54,14 +55,20 @@ export async function applyIntegrations(s: Services): Promise<void> {
   };
 }
 
-/** Notion writes are allowed only when the owner switched read-only off. */
 /** Same rule as Notion: once Google is set up from the cabinet, the calendar is read-only until the owner allows writes. */
 export async function calendarWritable(s: Services): Promise<boolean> {
   const ic = (await s.integrations?.get()) ?? {};
   return ic.google ? ic.google.readOnly === false : true;
 }
 
-export async function notionWritable(s: Services): Promise<boolean> {
+export async function notionAccess(s: Services): Promise<NotionAccess> {
   const ic = (await s.integrations?.get()) ?? {};
-  return ic.notion ? ic.notion.readOnly === false : true;
+  if (!ic.notion) return 'full';
+  return ic.notion.access ?? (ic.notion.readOnly === false ? 'full' : 'read');
+}
+
+/** In `create` mode only new tasks may be written: nothing that already exists is changed. */
+export async function notionAllows(s: Services, kind: string): Promise<boolean> {
+  const access = await notionAccess(s);
+  return access === 'full' || (access === 'create' && kind === 'task.create');
 }

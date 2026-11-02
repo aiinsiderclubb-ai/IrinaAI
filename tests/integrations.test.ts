@@ -95,8 +95,19 @@ describe('Notion wizard', () => {
     const reply = await new Agent(env.s).handle(42, 'додай задачу');
     expect(reply.proposals).toHaveLength(0);
 
+    // create-only: a new task becomes a card, changing an existing one stays blocked even if a card slipped through
+    const cr = await app.inject({ method: 'PATCH', url: '/api/integrations/notion', headers: H, payload: { access: 'create' } });
+    expect(cr.json().notion).toMatchObject({ access: 'create', readOnly: false });
+    env.llm.script.push(toolCall('task_create', { title: 'Нова задача' }), say('Підтвердь, будь ласка.'));
+    const created = await new Agent(env.s).handle(42, 'додай задачу');
+    expect(created.proposals.map((p) => p.kind)).toEqual(['task.create']);
+    const sneaky = await env.s.pending.create('task.complete', { id: 'x', label: 'Стратегія MLI' }, 'Завершити', 42);
+    expect(await runPending(env.s, sneaky.id)).toMatchObject({ ok: false, claimed: true });
+    expect(calls.filter((x) => x.url.includes('api.notion.com') && x.method === 'PATCH')).toHaveLength(0);
+
     await app.inject({ method: 'PATCH', url: '/api/integrations/notion', headers: H, payload: { readOnly: false } });
-    expect((await env.s.integrations!.get()).notion?.readOnly).toBe(false);
+    expect((await env.s.integrations!.get()).notion).toMatchObject({ readOnly: false, access: 'full' });
+    expect((await app.inject({ method: 'PATCH', url: '/api/integrations/notion', headers: H, payload: { access: 'everything' } })).statusCode).toBe(400);
   });
 });
 

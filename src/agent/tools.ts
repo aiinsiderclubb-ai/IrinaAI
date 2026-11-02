@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { runPending, type ActionKind, type ActionPayloads } from '../actions.js';
-import { calendarWritable, notionWritable } from '../integrations/runtime.js';
+import { calendarWritable, notionAccess, notionAllows } from '../integrations/runtime.js';
 import { mcpCallTool } from '../integrations/mcp.js';
 import { findConflicts } from '../calendar/logic.js';
 import type { Account } from '../integrations/google-calendar.js';
@@ -49,10 +49,13 @@ async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload:
       would_do: summary,
     };
   }
-  if (NOTION_KINDS.has(kind) && !(await notionWritable(ctx.s))) {
+  if (NOTION_KINDS.has(kind) && !(await notionAllows(ctx.s, kind))) {
+    const createOnly = (await notionAccess(ctx.s)) === 'create';
     return {
       status: 'read_only',
-      note: 'Notion підключено лише на читання (так домовились із власником). Нічого не записуй; скажи, що саме записав би, і що запис можна увімкнути в Опції → Підключення → Notion.',
+      note: createOnly
+        ? 'У Notion дозволено лише створювати нові задачі (так домовились із власницею); змінювати, закривати чи переносити наявні не можна. Нічого не змінюй; скажи, що саме зробив би, і що це можна дозволити в Опції → Підключення → Notion.'
+        : 'Notion підключено лише на читання (так домовились із власником). Нічого не записуй; скажи, що саме записав би, і що запис можна увімкнути в Опції → Підключення → Notion.',
       would_do: summary,
     };
   }

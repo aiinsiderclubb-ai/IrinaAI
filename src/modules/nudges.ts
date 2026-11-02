@@ -3,7 +3,7 @@ import { blocking } from '../calendar/logic.js';
 import type { CalEvent } from '../integrations/google-calendar.js';
 import { errMsg } from '../lib/log.js';
 import type { Task, WaitingItem } from '../notion/repo.js';
-import { listAllEvents, type Services } from '../services.js';
+import { listAllEvents, NotConnected, type Services } from '../services.js';
 
 export interface Nudge {
   key: string;
@@ -60,7 +60,8 @@ export async function runNudges(s: Services): Promise<Nudge[]> {
   try {
     events = (await listAllEvents(s, now.toISO()!, now.plus({ minutes: MEETING_LEAD_MIN + 1 }).toISO()!)).events;
   } catch (e) {
-    s.log.warn('nudges_calendar', { error: errMsg(e).slice(0, 120) });
+    // runs every minute: an unconnected calendar is not worth a log line each time
+    if (!(e instanceof NotConnected)) s.log.warn('nudges_calendar', { error: errMsg(e).slice(0, 120) });
   }
   try {
     const notion = await s.notion();

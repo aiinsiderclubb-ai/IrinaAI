@@ -3,7 +3,7 @@ import type { Account } from './integrations/google-calendar.js';
 import { errMsg } from './lib/log.js';
 import { NotConnected, type Services } from './services.js';
 import { callWebhook, mcpCallTool } from './integrations/mcp.js';
-import { calendarWritable, notionWritable } from './integrations/runtime.js';
+import { calendarWritable, notionAllows } from './integrations/runtime.js';
 
 /**
  * Everything that changes the owner's data runs here, and only after the owner pressed "Підтвердити"
@@ -154,9 +154,9 @@ export async function runPending(s: Services, id: string): Promise<{ ok: boolean
     await s.pending.finish(id, 'failed', 'calendar read-only');
     return { ok: false, text: 'Календар підключено лише на читання — запис вимкнено в налаштуваннях.', claimed: true };
   }
-  if (touchesNotion && !(await notionWritable(s))) {
+  if (touchesNotion && !(await notionAllows(s, action.kind))) {
     await s.pending.finish(id, 'failed', 'Notion read-only');
-    return { ok: false, text: 'Notion підключено лише на читання — запис вимкнено в налаштуваннях.', claimed: true };
+    return { ok: false, text: 'Цей запис у Notion вимкнено в налаштуваннях (Опції → Підключення → Notion).', claimed: true };
   }
   if (!exec) {
     await s.pending.finish(id, 'failed', 'unknown kind');

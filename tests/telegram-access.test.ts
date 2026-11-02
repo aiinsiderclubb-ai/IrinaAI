@@ -30,7 +30,7 @@ async function setup() {
       update_id: ++n,
       message: { message_id: n, date: 0, text, chat: { id: from, type: 'private', first_name: 'Влад' }, from: { id: from, is_bot: false, first_name: 'Влад', username: 'vlad' } },
     } as never);
-  return { env, app, H, sent, write };
+  return { env, app, H, sent, write, bot, next: () => ++n };
 }
 
 describe('Telegram access list', () => {
@@ -77,5 +77,34 @@ describe('Telegram access list', () => {
     expect((await app.inject({ method: 'POST', url: '/api/integrations/telegram', headers: H, payload: { id: 'abc' } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'POST', url: '/api/integrations/telegram', headers: H, payload: { id: OWNER } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'GET', url: '/api/integrations/telegram' })).statusCode).toBe(401);
+  });
+});
+
+describe('long messages', () => {
+  it('a long voice note is echoed as a preview and still answered (Telegram rejects texts over 4096)', async () => {
+    const { env, sent, bot, next } = await setup();
+    env.s.downloadFile = async () => new Uint8Array([1, 2, 3]);
+    env.llm.transcripts.push('Слово '.repeat(1500).trim());
+    env.llm.script.push(say('Зрозуміла, ось головне.'));
+    const n = next();
+    await bot.handleUpdate({
+      update_id: n,
+      message: { message_id: n, date: 0, chat: { id: OWNER, type: 'private', first_name: 'І' }, from: { id: OWNER, is_bot: false, first_name: 'І' }, voice: { file_id: 'f', file_unique_id: 'u', duration: 400 } },
+    } as never);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]!.text.length).toBeLessThan(800);
+    expect(sent[0]!.text).toMatch(/^🎙 Слово .*… \(ще \d+ символів\)$/s);
+    expect(sent[1]!.text).toBe('Зрозуміла, ось головне.');
+    // the model still got the whole transcript
+    expect(JSON.stringify(env.llm.calls[0]!.messages)).toContain('Слово '.repeat(1499));
+  });
+
+  it('a failure is reported in the chat instead of silence', async () => {
+    const { env, sent, write } = await setup();
+    env.llm.chat = async () => {
+      throw new Error('openai down');
+    };
+    await write(OWNER, 'привіт');
+    expect(sent.at(-1)!.text).toContain('⚠️ Не вдалося відповісти');
   });
 });

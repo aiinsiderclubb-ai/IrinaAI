@@ -18,6 +18,18 @@ import { TelegramAccess } from '../store/telegram-access.js';
 const TG_LIMIT = 4000;
 const VOICE_MAX_CHARS = 900;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+/** confirm cards and transcript echoes stay well under Telegram's 4096 characters */
+const CARD_MAX_CHARS = 3500;
+const ECHO_MAX_CHARS = 700;
+
+/** cuts on a word boundary and never inside a surrogate pair (emoji) */
+export function preview(text: string, max: number): string {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  const head = chars.slice(0, max).join('');
+  const cut = head.lastIndexOf(' ');
+  return `${(cut > max * 0.6 ? head.slice(0, cut) : head).trimEnd()}… (ще ${chars.length - max} символів)`;
+}
 const TEXT_FILE = /\.(txt|md|csv|json|log|html?)$/i;
 
 /** Splits on paragraph boundaries so HTML tags of one section stay together. */
@@ -104,6 +116,24 @@ export function createBot(s: Services, agent: Agent): Bot {
     }
   });
 
+  // Updates arrive through handleUpdate (webhook), where bot.catch does not apply: never fail silently.
+  bot.use(async (ctx, next) => {
+    try {
+      await next();
+    } catch (e) {
+      s.log.error('bot_error', { error: errMsg(e).slice(0, 300) });
+      if (ctx.chat?.id) await bot.api.sendMessage(ctx.chat.id, `⚠️ Не вдалося відповісти: ${errMsg(e).slice(0, 200)}\nСпробуй ще раз або напиши коротше.`).catch(() => {});
+    }
+  });
+
+  /** Telegram shows «друкує…» for 5 s: repeat it while a long answer or a long recording is being processed. */
+  function keepTyping(chatId: number): () => void {
+    const ping = () => void bot.api.sendChatAction(chatId, 'typing').catch(() => {});
+    ping();
+    const t = setInterval(ping, 4500);
+    return () => clearInterval(t);
+  }
+
   // ---------- rendering ----------
 
   async function sendCard(chatId: number, p: PendingAction): Promise<void> {
@@ -111,7 +141,8 @@ export function createBot(s: Services, agent: Agent): Bot {
     const needsProject = p.kind === 'note.save' && !p.payload.project && projects.length > 0;
     const kb = p.kind === 'note.save' ? importKeyboard(p.id, projects, !needsProject) : confirmKeyboard(p.id);
     const header = needsProject ? '📝 Оберіть проєкт для матеріалу' : '📝 Підтвердіть дію';
-    const msg = await bot.api.sendMessage(chatId, `${header}:\n${esc(p.summary)}`, { parse_mode: 'HTML', reply_markup: kb });
+    const summary = p.summary.length > CARD_MAX_CHARS ? `${p.summary.slice(0, CARD_MAX_CHARS)}…` : p.summary;
+    const msg = await bot.api.sendMessage(chatId, `${header}:\n${esc(summary)}`, { parse_mode: 'HTML', reply_markup: kb });
     await s.pending.setMessage(p.id, msg.message_id);
   }
 
@@ -151,9 +182,13 @@ export function createBot(s: Services, agent: Agent): Bot {
   }
 
   async function ask(chatId: number, text: string, viaVoice: boolean): Promise<void> {
-    await bot.api.sendChatAction(chatId, 'typing').catch(() => {});
-    const reply = await agent.handle(chatId, text);
-    await deliver(chatId, reply, viaVoice);
+    const stop = keepTyping(chatId);
+    try {
+      const reply = await agent.handle(chatId, text);
+      await deliver(chatId, reply, viaVoice);
+    } finally {
+      stop();
+    }
   }
 
   // ---------- import (ChatGPT / Dot / files) ----------
@@ -244,13 +279,19 @@ export function createBot(s: Services, agent: Agent): Bot {
   /** voice note, audio file or round video: transcribe, then answer like a typed message (by voice in mirror mode) */
   async function hearAndAnswer(chatId: number, file: { file_id: string; file_size?: number; mime_type?: string }, name: string): Promise<void> {
     if (file.file_size && file.file_size > MAX_FILE_BYTES) return void (await bot.api.sendMessage(chatId, 'Запис задовгий (Telegram дає боту файли до 20 МБ).'));
-    await bot.api.sendChatAction(chatId, 'typing').catch(() => {});
-    const audio = await s.downloadFile!(file.file_id);
-    const st = await s.settings.get();
-    const heard = await s.llm.transcribe(audio, name, file.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
-    const text = isPhantomTranscript(heard, st.assistantName) ? '' : heard;
+    const stop = keepTyping(chatId);
+    let text: string;
+    try {
+      const audio = await s.downloadFile!(file.file_id);
+      const st = await s.settings.get();
+      const heard = await s.llm.transcribe(audio, name, file.mime_type ?? 'audio/ogg', st.language, transcriptionHint(st.assistantName));
+      text = isPhantomTranscript(heard, st.assistantName) ? '' : heard;
+    } finally {
+      stop();
+    }
     if (!text) return void (await bot.api.sendMessage(chatId, 'Не вдалося розпізнати. Спробуй ще раз, ближче до мікрофона.'));
-    await bot.api.sendMessage(chatId, `🎙 ${text}`);
+    // a long recording is echoed as a preview: the whole transcript can exceed Telegram's 4096 characters
+    await bot.api.sendMessage(chatId, `🎙 ${preview(text, ECHO_MAX_CHARS)}`);
     await ask(chatId, text, true);
   }
 
