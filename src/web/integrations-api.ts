@@ -99,9 +99,18 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
   // ---------- keys of built-in services ----------
 
   const keyBodies = {
-    google: z.object({ clientId: z.string().trim().min(10), clientSecret: z.string().trim() }),
+    google: z.object({
+      clientId: z
+        .string()
+        .trim()
+        .regex(/^[\w-]+\.apps\.googleusercontent\.com$/, 'Client ID має закінчуватися на .apps.googleusercontent.com (Google Cloud → Clients)'),
+      clientSecret: z
+        .string()
+        .trim()
+        .refine((v) => v === '' || /^GOCSPX-[\w-]{10,}$/.test(v), 'Client secret має починатися з GOCSPX-'),
+    }),
     meta: z.object({
-      appId: z.string().trim().min(5),
+      appId: z.string().trim().regex(/^\d{8,20}$/, 'App ID — це лише цифри (Meta → App settings → Basic)'),
       appSecret: z.string().trim(),
       login: z.enum(['facebook', 'instagram']).optional(),
       configId: z.string().trim().optional(),

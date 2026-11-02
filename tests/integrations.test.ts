@@ -53,6 +53,11 @@ describe('integration settings store', () => {
     await app.inject({ method: 'PUT', url: '/api/integrations/google', headers: H, payload: { clientId: 'client-456.apps.googleusercontent.com', clientSecret: '' } });
     expect((await env.s.integrations!.get()).google).toEqual({ clientId: 'client-456.apps.googleusercontent.com', clientSecret: 'GOCSPX-supersecret' });
     expect((await app.inject({ method: 'DELETE', url: '/api/integrations/google', headers: H })).json().google.configured).toBe(false);
+    // a pasted link instead of the Client ID is refused with a hint, nothing is saved
+    const bad = await app.inject({ method: 'PUT', url: '/api/integrations/google', headers: H, payload: { clientId: 'https://t.me/+abcdef', clientSecret: 'GOCSPX-supersecret' } });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error).toContain('.apps.googleusercontent.com');
+    expect((await env.s.integrations!.get()).google).toBeUndefined();
   });
 
   it('rejects a key the provider does not accept', async () => {
