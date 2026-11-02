@@ -66,6 +66,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
         redirectUri: `${base}/oauth/google/callback`,
         readOnly: ic.google ? ic.google.readOnly !== false : false,
         calendars: { work: ic.google?.calendars?.work ?? 'primary', personal: ic.google?.calendars?.personal ?? 'primary' },
+        youtubeChannel: ic.google?.youtubeChannel ?? '',
         accounts: {
           work: { state: await slot('google:work'), connectUrl: s.googleAuth?.authUrl('google:work', state('google:work')) },
           personal: { state: await slot('google:personal'), connectUrl: s.googleAuth?.authUrl('google:personal', state('google:personal')) },
@@ -166,13 +167,24 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
   const googleBody = z.object({
     readOnly: z.boolean().optional(),
     calendars: z.object({ work: z.string().trim().min(1).max(300).optional(), personal: z.string().trim().min(1).max(300).optional() }).optional(),
+    youtubeChannel: z
+      .string()
+      .trim()
+      .regex(/^$|^UC[\w-]{22}$|^@[\w.-]{3,100}$/, 'Канал: UC… (ID) або @handle')
+      .optional(),
   });
   app.patch('/api/integrations/google', async (req, reply) => {
     const parsed = googleBody.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues.map((i) => i.message).join('; ') });
     const cur = (await store.get()).google ?? {};
-    const { readOnly, calendars } = parsed.data;
-    await store.patch('google', { ...(readOnly !== undefined ? { readOnly } : {}), ...(calendars ? { calendars: { ...cur.calendars, ...calendars } } : {}) });
+    const { readOnly, calendars, youtubeChannel } = parsed.data;
+    await store.patch('google', {
+      ...(readOnly !== undefined ? { readOnly } : {}),
+      ...(calendars ? { calendars: { ...cur.calendars, ...calendars } } : {}),
+      ...(youtubeChannel !== undefined ? { youtubeChannel } : {}),
+    });
+    // a snapshot of the previous channel must not show up as this one's dynamics
+    if (youtubeChannel !== undefined && youtubeChannel !== (cur.youtubeChannel ?? '')) await s.db.query("DELETE FROM social_snapshots WHERE platform = 'youtube'");
     await apply();
     return view();
   });

@@ -67,6 +67,8 @@ export interface IntegrationConfig {
     calendars?: { work?: string; personal?: string };
     /** calendar writes (events, day plan, work↔personal mirror) are off unless explicitly false */
     readOnly?: boolean;
+    /** YouTube channel to read (`UC…` or `@handle`) when the connected account manages it; default: its own channel */
+    youtubeChannel?: string;
   };
   meta?: {
     appId?: string;

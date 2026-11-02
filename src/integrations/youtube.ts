@@ -12,14 +12,18 @@ export class YouTubeClient {
   constructor(
     private auth: GoogleAuth,
     private clock: Clock = () => new Date(),
+    /** the owner's channel (`UC…` id or `@handle`) when the connected account only manages it; empty = the account's own */
+    private channel: () => string | undefined = () => undefined,
   ) {}
 
   async snapshot(periodDays = 7): Promise<SocialData> {
+    const want = this.channel()?.trim();
+    const pick = !want ? { mine: 'true' } : want.startsWith('@') ? { forHandle: want } : { id: want };
     const channels = await this.auth.authedJson<any>(SLOT, `${DATA}/channels`, {
-      query: { part: 'snippet,statistics,contentDetails', mine: 'true' },
+      query: { part: 'snippet,statistics,contentDetails', ...pick },
     });
     const ch = channels.items?.[0];
-    if (!ch) throw new Error('YouTube: канал не знайдено для цього акаунта');
+    if (!ch) throw new Error(want ? `YouTube: канал ${want} не знайдено` : 'YouTube: канал не знайдено для цього акаунта');
 
     const end = this.clock();
     const start = new Date(end.getTime() - periodDays * 86400_000);
@@ -28,7 +32,8 @@ export class YouTubeClient {
     try {
       const metrics = ['views', 'estimatedMinutesWatched', 'averageViewDuration', 'subscribersGained', 'subscribersLost', 'likes', 'comments'];
       const rep = await this.auth.authedJson<any>(SLOT, ANALYTICS, {
-        query: { ids: 'channel==MINE', startDate: iso(start), endDate: iso(end), metrics: metrics.join(',') },
+        // a manager's token may be refused for someone else's analytics: then only public counters are shown
+        query: { ids: want ? `channel==${ch.id}` : 'channel==MINE', startDate: iso(start), endDate: iso(end), metrics: metrics.join(',') },
         retries: 0,
       });
       const row: number[] = rep.rows?.[0] ?? [];

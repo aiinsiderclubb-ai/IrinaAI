@@ -17,7 +17,7 @@ type CustomView =
 
 interface View {
   notion: { state: State; token?: string; readOnly: boolean; access: NotionAccess; tasksDb?: string; mapping?: any; contextPages: string[]; helperDbs: Record<string, boolean> };
-  google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; readOnly: boolean; calendars: Record<'work' | 'personal', string>; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
+  google: { configured: boolean; clientId?: string; clientSecret?: string; redirectUri: string; readOnly: boolean; calendars: Record<'work' | 'personal', string>; youtubeChannel: string; accounts: Record<'work' | 'personal' | 'youtube', { state: State; connectUrl?: string }> };
   meta: { configured: boolean; appId?: string; appSecret?: string; redirectUri: string; login: 'facebook' | 'instagram'; configId?: string; instagram: { state: State; connectUrl?: string; expiresAt?: string; username?: string } };
   elevenlabs: { state: State; apiKey?: string };
   openai: { apiKey?: string; model: string };
@@ -494,6 +494,7 @@ function GoogleSection({ view, busy, run }: { view: View; busy: string | null; r
               </li>
             ))}
           </ul>
+          {g.accounts.youtube.state === 'on' && <YouTubeChannelPick current={g.youtubeChannel} busy={busy} run={run} />}
         </li>
         {(g.accounts.work.state === 'on' || g.accounts.personal.state === 'on') && (
           <li>
@@ -553,6 +554,22 @@ function CalendarPick({ account, current, busy, run }: { account: 'work' | 'pers
         </select>
       )}
     </li>
+  );
+}
+
+function YouTubeChannelPick({ current, busy, run }: { current: string; busy: string | null; run: Run }) {
+  const [value, setValue] = useState(current);
+  return (
+    <div className="form-grid" style={{ padding: '8px 0 0' }}>
+      <Field label="Канал YouTube (якщо акаунт лише керує ним)">
+        <input className="input" value={value} onChange={(e) => setValue(e.target.value)} placeholder="@handle або UC… — порожньо = власний канал акаунта" />
+      </Field>
+      <div className="row" style={{ alignItems: 'flex-end' }}>
+        <button type="button" className="btn btn-sm" disabled={busy === 'yt-channel' || value.trim() === current} onClick={() => void run('yt-channel', () => api.patch<View>('/api/integrations/google', { youtubeChannel: value.trim() }), 'Канал YouTube збережено')}>
+          Зберегти канал
+        </button>
+      </div>
+    </div>
   );
 }
 

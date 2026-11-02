@@ -289,3 +289,26 @@ describe('social refresh', () => {
     expect((await app.inject({ method: 'GET', url: '/api/social', headers: H })).json().accounts[0].data.account).toBe('MLI');
   });
 });
+
+describe('YouTube channel the account manages', () => {
+  it('reads the chosen channel by handle instead of the account own one, and drops the old channel snapshots', async () => {
+    const { env, app, H } = await setup();
+    await env.s.integrations!.patch('google', { clientId: 'cid.apps.googleusercontent.com', clientSecret: 'sec' });
+    await env.s.tokens.save('google:youtube', { accessToken: 'AT', refreshToken: 'r', expiresAt: new Date('2027-01-01'), meta: {} });
+    await applyIntegrations(env.s);
+    await env.db.query(`INSERT INTO social_snapshots(platform, taken_on, data) VALUES ('youtube', '2026-10-20', '{"account":"AI Survivor Club"}'::jsonb)`);
+    const calls = mockFetch([
+      ['/youtube/v3/channels', () => ({ items: [{ id: 'UCZSPzMU6yZaKZjpeGN13TPg', snippet: { title: 'Іріна Громова - Mental Longevity' }, statistics: { subscriberCount: '4420', viewCount: '100', videoCount: '10' }, contentDetails: {} }] })],
+      ['youtubeanalytics', () => new Response('{"error":{"code":403}}', { status: 403 })],
+    ]);
+    const bad = await app.inject({ method: 'PATCH', url: '/api/integrations/google', headers: H, payload: { youtubeChannel: 'irina' } });
+    expect(bad.statusCode).toBe(400);
+    const ok = await app.inject({ method: 'PATCH', url: '/api/integrations/google', headers: H, payload: { youtubeChannel: '@Irina_Gromova_code_of_woman' } });
+    expect(ok.json().google.youtubeChannel).toBe('@Irina_Gromova_code_of_woman');
+    expect((await env.db.query("SELECT count(*)::int AS n FROM social_snapshots WHERE platform = 'youtube'")).rows[0].n).toBe(0);
+    const snap = await env.s.youtube!.snapshot(7);
+    expect(snap).toMatchObject({ account: 'Іріна Громова - Mental Longevity', totals: { subscribers: 4420 }, unavailable: ['analytics'] });
+    expect(calls[0]!.url).toContain('forHandle=%40Irina_Gromova_code_of_woman');
+    expect(calls.find((c) => c.url.includes('youtubeanalytics'))!.url).toContain('channel%3D%3DUCZSPzMU6yZaKZjpeGN13TPg');
+  });
+});
