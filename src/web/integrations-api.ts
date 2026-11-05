@@ -7,7 +7,7 @@ import { httpJson } from '../lib/http.js';
 import { errMsg } from '../lib/log.js';
 import { signState } from '../lib/crypto.js';
 import { NotionHttp } from '../notion/client.js';
-import { clearContextCache } from '../notion/context.js';
+import { clearContextCache, listSubPages, readPagesText } from '../notion/context.js';
 import { NotionRepo } from '../notion/repo.js';
 import { discoverTasksSchema, projectOptions, type NotionDatabaseMeta } from '../notion/schema.js';
 import type { Services } from '../services.js';
@@ -223,7 +223,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
    * Why can't the assistant see a page? Says which integration the key belongs to and what Notion answers
    * for that page (read-only: one GET of the bot user and one GET of the page).
    */
-  app.get<{ Querystring: { page?: string; search?: string } }>('/api/integrations/notion/check', async (req, reply) => {
+  app.get<{ Querystring: { page?: string; search?: string; context?: string } }>('/api/integrations/notion/check', async (req, reply) => {
     if (!s.notionApi) return reply.code(400).send({ error: 'Спершу додайте токен Notion' });
     const raw = String(req.query.page ?? '');
     // a dashed UUID, or the 32 hex characters that end a Notion link («…-Staff-3f7a…ac31?pvs=4»)
@@ -254,6 +254,13 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
           out.database = { ok: false };
         }
       }
+    }
+    // exactly what the assistant gets in its prompt from the owner's pages, plus what it can open
+    if (req.query.context) {
+      const pages = (await s.settings.get()).notionContextPages;
+      clearContextCache();
+      const text = await readPagesText(s.notionApi, pages);
+      out.context = { pages: pages.length, chars: text.length, start: text.slice(0, 500), subPages: (await listSubPages(s.notionApi, pages)).map((p) => p.title) };
     }
     const q = String(req.query.search ?? '').trim();
     if (q) {
