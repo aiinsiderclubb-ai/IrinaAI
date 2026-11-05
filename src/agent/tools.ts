@@ -14,6 +14,7 @@ import { diffTotals, formatSocial, saveSnapshot, snapshotAround } from '../modul
 import type { SocialData } from '../integrations/social-types.js';
 import type { PendingAction } from '../store/pending.js';
 import { connectedAccounts, listAllEvents, type Services } from '../services.js';
+import { listSubPages, readSubPage } from '../notion/context.js';
 
 export interface ToolContext {
   s: Services;
@@ -433,6 +434,29 @@ export function buildTools(): Tool[] {
         }
       }
       return { text: parts.join('\n\n') };
+    },
+  });
+
+  add({
+    name: 'notion_page_read',
+    description:
+      'Прочитати вкладену сторінку з Управлінського центру власниці в Notion (стратегія, план тижня, правила, дослідження) за назвою або її частиною. ' +
+      'Без назви — список доступних сторінок. Лише читання.',
+    schema: z.object({ title: z.string().optional().describe('Назва сторінки або її частина, напр. «Platform Strategy v3.0», «Weekly Plan»') }),
+    proposes: false,
+    async run(a, { s }) {
+      const st = await s.settings.get();
+      if (!s.notionApi || !st.notionContextPages.length) return { error: 'Сторінки власниці в Notion не підключені' };
+      const pages = await listSubPages(s.notionApi, st.notionContextPages);
+      const list = pages.map((p) => `${p.type === 'database' ? '🗂' : '📄'} ${p.title}`);
+      const q = a.title?.trim().toLowerCase();
+      if (!q) return { pages: list };
+      const hits = pages.filter((p) => p.type === 'page' && p.title.toLowerCase().includes(q));
+      if (!hits.length) return { error: `Сторінку «${a.title}» не знайдено`, pages: list };
+      // several pages share a title («Founder Working» ×3): read all of them, newest first is Notion's order
+      const out = [];
+      for (const h of hits.slice(0, 3)) out.push({ title: h.title, text: await readSubPage(s.notionApi, h.id) });
+      return { pages: out, note: hits.length > 3 ? `Ще ${hits.length - 3} сторінок з такою назвою` : undefined };
     },
   });
 
