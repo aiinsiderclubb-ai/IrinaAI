@@ -235,7 +235,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
       out.pageId = id;
       try {
         const pg = await s.notionApi.request<any>('GET', `/v1/pages/${id}`);
-        out.page = { ok: true, title: title(Object.values<any>(pg.properties ?? {}).find((p) => p.type === 'title')?.title), parent: pg.parent?.type };
+        out.page = { ok: true, title: title(Object.values<any>(pg.properties ?? {}).find((p) => p.type === 'title')?.title), parent: pg.parent };
       } catch (e) {
         out.page = { ok: false, error: errMsg(e).slice(0, 300) };
         // a database id gives 404 on /pages
