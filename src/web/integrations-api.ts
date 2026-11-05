@@ -223,7 +223,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
    * Why can't the assistant see a page? Says which integration the key belongs to and what Notion answers
    * for that page (read-only: one GET of the bot user and one GET of the page).
    */
-  app.get<{ Querystring: { page?: string } }>('/api/integrations/notion/check', async (req, reply) => {
+  app.get<{ Querystring: { page?: string; search?: string } }>('/api/integrations/notion/check', async (req, reply) => {
     if (!s.notionApi) return reply.code(400).send({ error: 'Спершу додайте токен Notion' });
     const raw = String(req.query.page ?? '');
     // a dashed UUID, or the 32 hex characters that end a Notion link («…-Staff-3f7a…ac31?pvs=4»)
@@ -238,7 +238,24 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
         out.page = { ok: true, title: title(Object.values<any>(pg.properties ?? {}).find((p) => p.type === 'title')?.title), parent: pg.parent?.type };
       } catch (e) {
         out.page = { ok: false, error: errMsg(e).slice(0, 300) };
+        // a database id gives 404 on /pages
+        try {
+          const db = await s.notionApi.request<any>('GET', `/v1/databases/${id}`);
+          out.database = { ok: true, title: title(db.title) };
+        } catch {
+          out.database = { ok: false };
+        }
       }
+    }
+    const q = String(req.query.search ?? '').trim();
+    if (q) {
+      const res = await s.notionApi.request<any>('POST', '/v1/search', { query: q, page_size: 20 });
+      out.found = (res.results ?? []).map((r: any) => ({
+        type: r.object,
+        id: r.id,
+        title: r.object === 'database' ? title(r.title) : title(Object.values<any>(r.properties ?? {}).find((p) => p.type === 'title')?.title),
+        url: r.url,
+      }));
     }
     return out;
   });
