@@ -236,6 +236,14 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
       try {
         const pg = await s.notionApi.request<any>('GET', `/v1/pages/${id}`);
         out.page = { ok: true, title: title(Object.values<any>(pg.properties ?? {}).find((p) => p.type === 'title')?.title), parent: pg.parent };
+        // what the page is made of: the assistant reads text blocks, sub-pages and databases differ
+        const kids = await s.notionApi.request<any>('GET', `/v1/blocks/${id}/children?page_size=100`);
+        out.children = (kids.results ?? []).map((b: any) => ({
+          type: b.type,
+          text: (b.type === 'child_page' ? b.child_page?.title : b.type === 'child_database' ? b.child_database?.title : (b[b.type]?.rich_text ?? []).map((t: any) => t.plain_text).join('')).slice(0, 80),
+          id: b.id,
+          nested: b.has_children,
+        }));
       } catch (e) {
         out.page = { ok: false, error: errMsg(e).slice(0, 300) };
         // a database id gives 404 on /pages
