@@ -305,10 +305,26 @@ describe('YouTube channel the account manages', () => {
     expect(bad.statusCode).toBe(400);
     const ok = await app.inject({ method: 'PATCH', url: '/api/integrations/google', headers: H, payload: { youtubeChannel: '@Irina_Gromova_code_of_woman' } });
     expect(ok.json().google.youtubeChannel).toBe('@Irina_Gromova_code_of_woman');
-    expect((await env.db.query("SELECT count(*)::int AS n FROM social_snapshots WHERE platform = 'youtube'")).rows[0].n).toBe(0);
+    expect((await env.db.query("SELECT count(*)::int AS n FROM social_snapshots WHERE platform = 'youtube'")).rows[0]!.n).toBe(0);
     const snap = await env.s.youtube!.snapshot(7);
     expect(snap).toMatchObject({ account: 'Іріна Громова - Mental Longevity', totals: { subscribers: 4420 }, unavailable: ['analytics'] });
     expect(calls[0]!.url).toContain('forHandle=%40Irina_Gromova_code_of_woman');
     expect(calls.find((c) => c.url.includes('youtubeanalytics'))!.url).toContain('channel%3D%3DUCZSPzMU6yZaKZjpeGN13TPg');
+  });
+});
+
+describe('Notion access check', () => {
+  it('names the integration behind the key and reports what Notion answers for a page link', async () => {
+    const { env, app, H } = await setup();
+    await env.s.integrations!.patch('notion', { token: 'ntn_' + 'x'.repeat(30), readOnly: true });
+    await applyIntegrations(env.s);
+    const calls = mockFetch([
+      ['/v1/users/me', () => ({ name: 'AI Assistant', bot: { workspace_name: 'Ірина', owner: { type: 'workspace' } } })],
+      ['/v1/pages/', () => new Response('{"object":"error","code":"object_not_found","message":"Could not find page"}', { status: 404 })],
+    ]);
+    const r = await app.inject({ method: 'GET', url: '/api/integrations/notion/check?page=' + encodeURIComponent('https://www.notion.so/MLI-AI-Chief-of-Staff-3f7a94faad918156acc5ca32f126ac31?pvs=4'), headers: H });
+    expect(r.json()).toMatchObject({ bot: 'AI Assistant', workspace: 'Ірина', pageId: '3f7a94fa-ad91-8156-acc5-ca32f126ac31', page: { ok: false } });
+    expect(r.json().page.error).toContain('object_not_found');
+    expect(calls.every((c) => c.method === 'GET')).toBe(true);
   });
 });

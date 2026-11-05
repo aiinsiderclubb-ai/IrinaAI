@@ -219,6 +219,30 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
     return { items: out };
   });
 
+  /**
+   * Why can't the assistant see a page? Says which integration the key belongs to and what Notion answers
+   * for that page (read-only: one GET of the bot user and one GET of the page).
+   */
+  app.get<{ Querystring: { page?: string } }>('/api/integrations/notion/check', async (req, reply) => {
+    if (!s.notionApi) return reply.code(400).send({ error: 'Спершу додайте токен Notion' });
+    const raw = String(req.query.page ?? '');
+    // a dashed UUID, or the 32 hex characters that end a Notion link («…-Staff-3f7a…ac31?pvs=4»)
+    const hex = (raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] ?? raw.match(/(?:^|[^0-9a-f])([0-9a-f]{32})(?![0-9a-f])/i)?.[1])?.replace(/-/g, '');
+    const me = await s.notionApi.request<any>('GET', '/v1/users/me');
+    const out: Record<string, unknown> = { bot: me.name, workspace: me.bot?.workspace_name, botOwner: me.bot?.owner?.type };
+    if (hex) {
+      const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+      out.pageId = id;
+      try {
+        const pg = await s.notionApi.request<any>('GET', `/v1/pages/${id}`);
+        out.page = { ok: true, title: title(Object.values<any>(pg.properties ?? {}).find((p) => p.type === 'title')?.title), parent: pg.parent?.type };
+      } catch (e) {
+        out.page = { ok: false, error: errMsg(e).slice(0, 300) };
+      }
+    }
+    return out;
+  });
+
   /** Read-only setup: map the existing tasks database, pick pages read into the prompt. Creates nothing in Notion. */
   app.post<{ Body: { tasksDb?: string; contextPages?: string[]; importProjects?: boolean; projects?: string[] } }>('/api/integrations/notion/configure', async (req, reply) => {
     if (!s.notionApi) return reply.code(400).send({ error: 'Спершу додайте токен Notion' });
