@@ -14,6 +14,12 @@ import type { NotionAccess } from '../store/integrations.js';
  * (Re)builds every integration from the cabinet settings, with env vars as fallback.
  * Called at start and after each change in Опції → Підключення, so nothing needs a redeploy.
  */
+/** the key the assistant actually uses: the client's from the cabinet, else the server's */
+export async function activeOpenAiKey(s: Services): Promise<{ key: string; source: 'cabinet' | 'server' }> {
+  const k = (await s.integrations?.get())?.openai?.apiKey;
+  return k ? { key: k, source: 'cabinet' } : { key: s.cfg.OPENAI_API_KEY, source: 'server' };
+}
+
 export async function applyIntegrations(s: Services): Promise<void> {
   const cfg = s.cfg;
   const ic = (await s.integrations?.get()) ?? {};

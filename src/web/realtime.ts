@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 import { buildSystemPrompt, runToolCall } from '../agent/agent.js';
 import { buildVoiceTools, toolSpecs, type ToolContext } from '../agent/tools.js';
 import { createRealtimeSecret, type RealtimeSecret } from '../integrations/openai.js';
+import { activeOpenAiKey } from '../integrations/runtime.js';
 import { nudgesAfter } from '../modules/nudges.js';
 import type { Services } from '../services.js';
 import { kvGet, kvSet } from '../store/kv.js';
@@ -40,7 +41,7 @@ export async function buildRealtimeSession(s: Services, opts: { handsFree: boole
 export function registerRealtime(app: FastifyInstance, s: Services, createSecret?: SecretFactory): void {
   const ownerId = s.cfg.OWNER_TELEGRAM_ID;
   const tools = buildVoiceTools();
-  const secretFactory: SecretFactory = createSecret ?? ((session) => createRealtimeSecret(s.cfg.OPENAI_API_KEY, session));
+  const secretFactory: SecretFactory = createSecret ?? (async (session) => createRealtimeSecret((await activeOpenAiKey(s)).key, session));
 
   app.post<{ Body: { handsFree?: boolean } }>('/api/realtime/session', async (req) => {
     const st = await s.settings.get();

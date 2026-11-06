@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { baseUrl } from '../config.js';
 import { mcpListTools } from '../integrations/mcp.js';
-import { applyIntegrations } from '../integrations/runtime.js';
-import { httpJson } from '../lib/http.js';
+import { activeOpenAiKey, applyIntegrations } from '../integrations/runtime.js';
+import { HttpError, httpJson } from '../lib/http.js';
 import { errMsg } from '../lib/log.js';
 import { signState } from '../lib/crypto.js';
 import { NotionHttp } from '../notion/client.js';
@@ -123,8 +123,18 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
   /** cheap read-only call to check a key before saving it */
   const verify: Partial<Record<keyof typeof keyBodies, (v: any) => Promise<void>>> = {
     elevenlabs: async (v) => void (await httpJson('https://api.elevenlabs.io/v1/user/subscription', { headers: { 'xi-api-key': v.apiKey }, retries: 0 })),
-    openai: async (v) => void (await httpJson('https://api.openai.com/v1/models', { headers: { authorization: `Bearer ${v.apiKey}` }, retries: 0 })),
+    openai: async (v) => {
+      const err = await checkOpenAi(v.apiKey, s.cfg.OPENAI_MODEL);
+      if (err) throw new Error(err);
+    },
   };
+
+  /** The key in use right now, checked with a real (tiny) request: listing models works even with an empty balance. */
+  app.get('/api/integrations/openai/check', async () => {
+    const { key, source } = await activeOpenAiKey(s);
+    const error = await checkOpenAi(key, s.cfg.OPENAI_MODEL);
+    return { ok: !error, source, model: s.cfg.OPENAI_MODEL, ...(error ? { error } : {}) };
+  });
 
   app.put<{ Params: { section: string } }>('/api/integrations/:section', async (req, reply) => {
     const section = req.params.section as keyof typeof keyBodies;
@@ -135,7 +145,7 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
     try {
       await verify[section]?.(parsed.data);
     } catch (e) {
-      return reply.code(400).send({ error: `Ключ не підійшов: ${errMsg(e).slice(0, 160)}` });
+      return reply.code(400).send({ error: `Ключ не підійшов: ${errMsg(e).slice(0, 200)}` });
     }
     await store.patch(section, parsed.data as never);
     await apply();
@@ -399,4 +409,28 @@ export function registerIntegrations(app: FastifyInstance, s: Services): void {
     await access.remove(id.data);
     return accessView();
   });
+}
+
+/**
+ * One request of a few tokens to the assistant's model. Returns a readable reason when it fails:
+ * no credits (429 insufficient_quota), a wrong key (401) or no access to the model (403/404).
+ */
+export async function checkOpenAi(key: string, model: string): Promise<string | undefined> {
+  try {
+    await httpJson('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}` },
+      json: { model, input: 'ok', max_output_tokens: 16 },
+      retries: 0,
+    });
+    return undefined;
+  } catch (e) {
+    if (!(e instanceof HttpError)) return errMsg(e).slice(0, 200);
+    const body = e.body;
+    if (e.status === 429 && /insufficient_quota|no credits/i.test(body)) return 'на балансі OpenAI немає кредитів — поповніть: platform.openai.com → Settings → Billing';
+    if (e.status === 429) return 'OpenAI тимчасово обмежує запити (rate limit), спробуйте за хвилину';
+    if (e.status === 401) return 'OpenAI не прийняв ключ (недійсний або видалений)';
+    if (e.status === 403 || e.status === 404) return `ключ не має доступу до моделі ${model}`;
+    return body.slice(0, 200);
+  }
 }

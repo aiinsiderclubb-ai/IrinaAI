@@ -127,6 +127,7 @@ function ConnectionsBody({ view, setView }: { view: View; setView: (v: View) => 
             onSave={(apiKey) => run('openai', () => api.put<View>('/api/integrations/openai', { apiKey }), 'Ключ OpenAI оновлено')}
             onClear={() => run('openai', () => api.del<View>('/api/integrations/openai'))}
             busy={busy === 'openai'}
+            extra={<OpenAiCheck />}
           />
         </ul>
       </section>
@@ -642,7 +643,7 @@ function MetaSection({ view, busy, run }: { view: View; busy: string | null; run
   );
 }
 
-function KeySection(props: { title: string; hint: string; state: State; current?: string; placeholder: string; onSave: (v: string) => Promise<boolean>; onClear: () => void; busy: boolean }) {
+function KeySection(props: { title: string; hint: string; state: State; current?: string; placeholder: string; onSave: (v: string) => Promise<boolean>; onClear: () => void; busy: boolean; extra?: ReactNode }) {
   const [value, setValue] = useState('');
   return (
     <Section title={props.title} hint={props.hint} right={<Pill state={props.state} />}>
@@ -658,7 +659,34 @@ function KeySection(props: { title: string; hint: string; state: State; current?
           </button>
         )}
       </div>
+      {props.extra}
     </Section>
+  );
+}
+
+/** A real tiny request with the key in use: saving a key only proves it exists, not that the balance is topped up. */
+function OpenAiCheck() {
+  const [res, setRes] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const check = async () => {
+    setBusy(true);
+    try {
+      const r = await api.get<{ ok: boolean; source: 'cabinet' | 'server'; error?: string }>('/api/integrations/openai/check');
+      const whose = r.source === 'cabinet' ? 'ключ з кабінету' : 'ключ сервера';
+      setRes(r.ok ? { ok: true, text: `Працює (${whose})` } : { ok: false, text: `Не працює (${whose}): ${r.error}` });
+    } catch (e) {
+      setRes({ ok: false, text: e instanceof ApiError ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row" style={{ marginTop: 8, gap: 8, alignItems: 'center' }}>
+      <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void check()}>
+        {busy ? 'Перевіряю…' : 'Перевірити баланс'}
+      </button>
+      {res && <span style={{ color: res.ok ? undefined : 'var(--danger)' }} className={res.ok ? 'muted' : undefined}>{res.ok ? '✓ ' : '⚠ '}{res.text}</span>}
+    </div>
   );
 }
 
