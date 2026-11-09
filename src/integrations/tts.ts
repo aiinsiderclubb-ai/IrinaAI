@@ -32,6 +32,10 @@ async function pumpPcm(res: Response, onChunk: (pcm: Uint8Array) => void): Promi
   take(true);
 }
 
+/** an override with `voice: undefined` must not wipe the chosen voice */
+const defined = <T extends object>(o: T | undefined): Partial<T> =>
+  Object.fromEntries(Object.entries(o ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
+
 /** Native Ukrainian voices from the ElevenLabs library, picked for natural conversational delivery. */
 export const ELEVEN_VOICES: Array<{ id: string; label: string }> = [
   { id: 'yMBZR4SLoc24wOJLWAB2', label: 'Соломія — жіночий, розмовний' },
@@ -64,7 +68,7 @@ export class ElevenLabs implements Tts {
   ) {}
 
   private async body(text: string, model: string, override?: Partial<VoiceChoice>) {
-    const c = { ...(await this.choice()), ...override };
+    const c = { ...(await this.choice()), ...defined(override) };
     return { voice: c.voice, json: { text, model_id: model, voice_settings: { ...(ELEVEN_STYLE[c.style] ?? ELEVEN_STYLE.natural!), use_speaker_boost: true } } };
   }
 
@@ -170,7 +174,7 @@ export class OpenAiTts implements Tts {
   ) {}
 
   private async request(text: string, format: 'mp3' | 'pcm', override?: Partial<VoiceChoice>) {
-    const c = { ...(await this.choice()), ...override };
+    const c = { ...(await this.choice()), ...defined(override) };
     return http('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: { authorization: `Bearer ${this.apiKey}` },
