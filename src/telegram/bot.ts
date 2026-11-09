@@ -172,10 +172,12 @@ export function createBot(s: Services, agent: Agent): Bot {
 
   async function deliver(chatId: number, reply: AgentReply, viaVoice: boolean): Promise<void> {
     const { voiceReplies } = await s.settings.get();
-    const wantVoice = voiceReplies === 'always' || (voiceReplies === 'mirror' && viaVoice);
+    // an explicit request ("say it by voice") wins over the mode; cards then follow the voice message
+    const asked = reply.voice === true;
+    const wantVoice = asked || voiceReplies === 'always' || (voiceReplies === 'mirror' && viaVoice);
     const hasCards = reply.proposals.length > 0;
     if (reply.text) {
-      const spoken = wantVoice && !hasCards && reply.text.length <= VOICE_MAX_CHARS && (await sendVoice(chatId, reply.text));
+      const spoken = wantVoice && (asked || !hasCards) && reply.text.length <= VOICE_MAX_CHARS && (await sendVoice(chatId, reply.text));
       if (!spoken) for (const part of chunk(reply.text)) await sendRich(chatId, part);
     }
     for (const p of reply.proposals) await sendCard(chatId, p);

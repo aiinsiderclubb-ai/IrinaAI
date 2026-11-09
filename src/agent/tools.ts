@@ -23,6 +23,8 @@ export interface ToolContext {
   proposals: PendingAction[];
   /** voice mode: the owner's last utterance, checked before a spoken "yes" confirms an action */
   lastUserText?: string;
+  /** set by reply_voice: the owner asked for this answer as a voice message */
+  speak?: boolean;
 }
 
 export interface Tool<T extends z.ZodType = z.ZodType> {
@@ -521,6 +523,18 @@ export function buildTools(): Tool[] {
     async run(a, ctx) {
       const project = await canonicalProject(ctx.s, a.project);
       return propose(ctx, 'note.save', { title: a.title, project, source: a.source ?? 'Інше', text: a.text }, `Зберегти матеріал «${a.title}»${project ? ` у проєкт ${project}` : ''}`);
+    },
+  });
+
+  add({
+    name: 'reply_voice',
+    description:
+      'Надіслати цю відповідь голосовим повідомленням у Telegram. Виклич, коли власник просить відповісти голосом («скажи голосом», «голосовим», «озвуч»). Потім дай коротку відповідь (до 800 символів) без таблиць і посилань.',
+    schema: z.object({}),
+    proposes: false,
+    async run(_a, ctx) {
+      ctx.speak = true;
+      return { status: 'ok', note: 'Ця відповідь піде голосовим. Пиши коротко, як для озвучки.' };
     },
   });
 
