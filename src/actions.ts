@@ -4,6 +4,7 @@ import { errMsg } from './lib/log.js';
 import { NotConnected, type Services } from './services.js';
 import { callWebhook, mcpCallTool } from './integrations/mcp.js';
 import { calendarWritable, notionAllows } from './integrations/runtime.js';
+import { mdToBlocks } from './notion/blocks.js';
 
 /**
  * Everything that changes the owner's data runs here, and only after the owner pressed "Підтвердити"
@@ -23,6 +24,7 @@ export interface ActionPayloads {
   'custom.webhook': { integrationId: string; params: Record<string, unknown>; label: string };
   'custom.mcp': { integrationId: string; tool: string; args: Record<string, unknown>; label: string };
   'note.save': { title: string; project?: string; source: string; text: string; file?: { fileId: string; name: string; mime: string } };
+  'page.create': { title: string; content: string; parentId: string; parentTitle: string };
 }
 
 export type ActionKind = keyof ActionPayloads;
@@ -122,6 +124,19 @@ export const EXECUTORS: Executors = {
     if (!c || c.type !== 'mcp' || !c.enabled) throw new Error(`Інтеграцію «${p.label}» вимкнено або видалено`);
     const reply = await mcpCallTool(c.url, c.authorization, p.tool, p.args);
     return `Виконано ${p.label}. ${reply.slice(0, 300)}`;
+  },
+
+  async 'page.create'(s, p) {
+    if (!s.notionApi) throw new NotConnected('Notion не підключено (Опції → Підключення)');
+    const blocks = mdToBlocks(p.content);
+    // Notion takes at most 100 blocks per request: the rest are appended after the page exists
+    const page = await s.notionApi.request<any>('POST', '/v1/pages', {
+      parent: { page_id: p.parentId },
+      properties: { title: { title: [{ type: 'text', text: { content: p.title.slice(0, 200) } }] } },
+      children: blocks.slice(0, 100),
+    });
+    for (let i = 100; i < blocks.length; i += 100) await s.notionApi.request('PATCH', `/v1/blocks/${page.id}/children`, { children: blocks.slice(i, i + 100) });
+    return `Документ створено в Notion: «${p.title}» (у «${p.parentTitle}»)${page.url ? `\n${page.url}` : ''}`;
   },
 
   async 'note.save'(s, p) {

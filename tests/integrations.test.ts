@@ -217,7 +217,7 @@ describe('live reconfigure', () => {
     await applyIntegrations(env.s);
     expect(env.s.googleAuth).toBeDefined();
     expect(env.s.calendar).toBeDefined();
-    expect(env.s.tts?.constructor.name).toBe('ElevenLabs');
+    expect(env.s.tts?.constructor.name).toBe('FallbackTts');
   });
 });
 

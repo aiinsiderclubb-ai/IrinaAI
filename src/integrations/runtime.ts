@@ -1,4 +1,5 @@
 import { baseUrl } from '../config.js';
+import { errMsg } from '../lib/log.js';
 import { NotionHttp } from '../notion/client.js';
 import { NotionNotConfigured, NotionRepo } from '../notion/repo.js';
 import { NotConnected, type Services } from '../services.js';
@@ -6,7 +7,7 @@ import { GoogleAuth } from './google-auth.js';
 import { GoogleCalendar } from './google-calendar.js';
 import { InstagramClient } from './instagram.js';
 import { OpenAi } from './openai.js';
-import { ElevenLabs, OpenAiTts } from './tts.js';
+import { ElevenLabs, FallbackTts, OpenAiTts } from './tts.js';
 import { YouTubeClient } from './youtube.js';
 import type { NotionAccess } from '../store/integrations.js';
 
@@ -38,15 +39,20 @@ export async function applyIntegrations(s: Services): Promise<void> {
   s.instagram = m.id && m.secret ? new InstagramClient({ appId: m.id, appSecret: m.secret, redirectUri: `${base}/oauth/instagram/callback`, login: ic.meta?.login, configId: ic.meta?.configId }, s.tokens, s.clock) : undefined;
 
   const eleven = ic.elevenlabs?.apiKey || cfg.ELEVENLABS_API_KEY;
+  const openaiTts = new OpenAiTts(openaiKey, cfg.OPENAI_TTS_MODEL, async () => {
+    const st = await s.settings.get();
+    return { voice: st.ttsVoice || cfg.OPENAI_TTS_VOICE, style: st.ttsStyle };
+  });
   s.tts = eleven
-    ? new ElevenLabs(eleven, { fast: cfg.ELEVENLABS_MODEL_FAST, quality: cfg.ELEVENLABS_MODEL }, async () => {
-        const st = await s.settings.get();
-        return { voice: cfg.ELEVENLABS_VOICE_ID && !st.elevenVoice ? cfg.ELEVENLABS_VOICE_ID : st.elevenVoice, style: st.ttsStyle };
-      })
-    : new OpenAiTts(openaiKey, cfg.OPENAI_TTS_MODEL, async () => {
-        const st = await s.settings.get();
-        return { voice: st.ttsVoice || cfg.OPENAI_TTS_VOICE, style: st.ttsStyle };
-      });
+    ? new FallbackTts(
+        new ElevenLabs(eleven, { fast: cfg.ELEVENLABS_MODEL_FAST, quality: cfg.ELEVENLABS_MODEL }, async () => {
+          const st = await s.settings.get();
+          return { voice: cfg.ELEVENLABS_VOICE_ID && !st.elevenVoice ? cfg.ELEVENLABS_VOICE_ID : st.elevenVoice, style: st.ttsStyle };
+        }),
+        openaiTts,
+        (e) => s.log.warn('tts_fallback_openai', { error: errMsg(e).slice(0, 200) }),
+      )
+    : openaiTts;
 
   const notionToken = ic.notion?.token || cfg.NOTION_TOKEN;
   s.notionApi = notionToken ? new NotionHttp(notionToken, cfg.NOTION_VERSION) : undefined;
@@ -73,8 +79,10 @@ export async function notionAccess(s: Services): Promise<NotionAccess> {
   return ic.notion.access ?? (ic.notion.readOnly === false ? 'full' : 'read');
 }
 
-/** In `create` mode only new tasks may be written: nothing that already exists is changed. */
+/** What `create` mode allows: adding new things. Nothing that already exists is changed, closed or moved. */
+export const NOTION_CREATE_KINDS = new Set(['task.create', 'decision.log', 'waiting.add', 'finance.record', 'note.save', 'page.create']);
+
 export async function notionAllows(s: Services, kind: string): Promise<boolean> {
   const access = await notionAccess(s);
-  return access === 'full' || (access === 'create' && kind === 'task.create');
+  return access === 'full' || (access === 'create' && NOTION_CREATE_KINDS.has(kind));
 }

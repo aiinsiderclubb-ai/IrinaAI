@@ -40,7 +40,7 @@ const date = z.string().describe('Дата YYYY-MM-DD');
 const dateTime = z.string().describe('Локальний час YYYY-MM-DDTHH:mm (часовий пояс власника) або дата YYYY-MM-DD');
 
 const CALENDAR_KINDS = new Set<ActionKind>(['calendar.create', 'plan.apply']);
-const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save']);
+const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save', 'page.create']);
 
 async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
   if (CALENDAR_KINDS.has(kind) && !(await calendarWritable(ctx.s))) {
@@ -55,7 +55,7 @@ async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload:
     return {
       status: 'read_only',
       note: createOnly
-        ? 'У Notion дозволено лише створювати нові задачі (так домовились із власницею); змінювати, закривати чи переносити наявні не можна. Нічого не змінюй; скажи, що саме зробив би, і що це можна дозволити в Опції → Підключення → Notion.'
+        ? 'У Notion дозволено лише створювати нове (задачі, документи, записи), а змінювати, закривати чи переносити наявне не можна (так домовились із власницею). Нічого не змінюй; скажи, що саме зробив би, і що це можна дозволити в Опції → Підключення → Notion.'
         : 'Notion підключено лише на читання (так домовились із власником). Нічого не записуй; скажи, що саме записав би, і що запис можна увімкнути в Опції → Підключення → Notion.',
       would_do: summary,
     };
@@ -457,6 +457,46 @@ export function buildTools(): Tool[] {
       const out = [];
       for (const h of hits.slice(0, 3)) out.push({ title: h.title, text: await readSubPage(s.notionApi, h.id) });
       return { pages: out, note: hits.length > 3 ? `Ще ${hits.length - 3} сторінок з такою назвою` : undefined };
+    },
+  });
+
+  add({
+    name: 'notion_page_create',
+    description:
+      'Підготувати НОВИЙ документ (сторінку) у Notion власниці: звіт, план, нотатки зустрічі, чек-лист. ' +
+      'Створюється всередині Управлінського центру або всередині його вкладеної сторінки (under). Наявні сторінки не змінюються. ' +
+      'content — Markdown: # заголовки, списки, - [ ] чек-лист, таблиці | a | b |, **жирний**. Пиши лише факти, які маєш; не вигадуй сум і дат.',
+    schema: z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1).max(30000),
+      under: z.string().optional().describe('Назва вкладеної сторінки Управлінського центру, всередині якої створити документ; без неї — у самому центрі'),
+    }),
+    proposes: true,
+    async run(a, ctx) {
+      const { s } = ctx;
+      const st = await s.settings.get();
+      if (!s.notionApi || !st.notionContextPages.length) return { error: 'Сторінки власниці в Notion не підключені' };
+      let parentId = st.notionContextPages[0]!;
+      let parentTitle = 'Управлінський центр';
+      if (a.under?.trim()) {
+        const q = a.under.trim().toLowerCase();
+        const pages = (await listSubPages(s.notionApi, st.notionContextPages)).filter((p) => p.type === 'page');
+        const hit = pages.find((p) => p.title.toLowerCase() === q) ?? pages.find((p) => p.title.toLowerCase().includes(q));
+        if (!hit) return { error: `Сторінку «${a.under}» не знайдено`, pages: pages.map((p) => p.title) };
+        parentId = hit.id;
+        parentTitle = hit.title;
+      } else {
+        try {
+          const page = await s.notionApi.request<any>('GET', `/v1/pages/${parentId}`);
+          const t = Object.values<any>(page.properties ?? {}).find((p) => p.type === 'title')?.title;
+          const name = (t ?? []).map((x: any) => x.plain_text ?? '').join('').trim();
+          if (name) parentTitle = name;
+        } catch {
+          /* the generic name is fine */
+        }
+      }
+      const blocks = a.content.split('\n').filter((l) => l.trim()).length;
+      return propose(ctx, 'page.create', { title: a.title.trim(), content: a.content, parentId, parentTitle }, `📄 Новий документ у Notion: «${a.title.trim()}»\nДе: «${parentTitle}» · ${blocks} рядків`);
     },
   });
 

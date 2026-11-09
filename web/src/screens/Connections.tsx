@@ -4,7 +4,7 @@ import { ErrorNote, Loading, useLoad, useToast } from '../ui';
 
 type State = 'on' | 'off' | 'broken' | 'setup';
 type NotionAccess = 'read' | 'create' | 'full';
-const NOTION_ACCESS: Record<NotionAccess, string> = { read: 'лише читання', create: 'читання + нові задачі', full: 'читання і запис' };
+const NOTION_ACCESS: Record<NotionAccess, string> = { read: 'лише читання', create: 'читання + створення нового', full: 'читання і запис' };
 interface McpToolView {
   name: string;
   description: string;
@@ -394,7 +394,7 @@ function NotionSection({ view, setView }: { view: View; setView: (v: View) => vo
             Доступ асистента (кожен запис — після «Підтвердити»)
             <select className="input" value={n.access} onChange={(e) => setAccess(e.target.value as NotionAccess)}>
               <option value="read">Лише читання</option>
-              <option value="create">Читання + створення нових задач</option>
+              <option value="create">Читання + створення нового (задачі, документи, записи)</option>
               <option value="full">Читання і запис (задачі, статуси, рішення)</option>
             </select>
           </label>

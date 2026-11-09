@@ -193,3 +193,41 @@ export class OpenAiTts implements Tts {
     await pumpPcm(await this.request(text, 'pcm'), onChunk);
   }
 }
+
+/**
+ * ElevenLabs first, OpenAI speech when it fails (unpaid subscription, used-up quota, outage),
+ * so a voice reply never silently turns into text only.
+ */
+export class FallbackTts implements Tts {
+  constructor(
+    private primary: Tts & { speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> },
+    private backup: Tts,
+    private onFallback: (e: unknown) => void = () => {},
+  ) {}
+
+  async speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> {
+    try {
+      return await this.primary.speak(text, override);
+    } catch (e) {
+      this.onFallback(e);
+      // voice ids of one service mean nothing to the other: the backup speaks with its own voice
+      return this.backup.speak(text);
+    }
+  }
+
+  async streamPcm(text: string, onChunk: (pcm: Uint8Array) => void): Promise<void> {
+    let started = false;
+    try {
+      if (!this.primary.streamPcm) throw new Error('no streaming');
+      await this.primary.streamPcm(text, (c) => {
+        started = true;
+        onChunk(c);
+      });
+    } catch (e) {
+      if (started) throw e; // half a sentence already played: repeating it in another voice is worse
+      this.onFallback(e);
+      if (!this.backup.streamPcm) throw e;
+      await this.backup.streamPcm(text, onChunk);
+    }
+  }
+}
