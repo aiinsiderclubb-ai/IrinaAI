@@ -112,3 +112,17 @@ describe('syncCalendars (two-way, no ping-pong)', () => {
     void DateTime;
   });
 });
+
+describe('calendar_sync job', () => {
+  it('writing into the calendar does not switch the mirror on: it runs only when the owner enabled it', async () => {
+    const { buildJobs } = await import('../src/scheduler.js');
+    const env = await makeEnv();
+    env.calendar.add('work', { title: 'Board meeting', start: '2026-10-23T10:00:00+03:00', end: '2026-10-23T11:00:00+03:00' });
+    const job = buildJobs().find((j) => j.name === 'calendar_sync')!;
+    await job.run(env.s);
+    expect(env.calendar.events.personal.filter((e) => e.mirror)).toHaveLength(0);
+    await env.s.settings.update({ calendarMirror: true });
+    await job.run(env.s);
+    expect(env.calendar.events.personal.filter((e) => e.mirror)).toHaveLength(1);
+  });
+});

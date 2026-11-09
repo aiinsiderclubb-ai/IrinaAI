@@ -25,6 +25,8 @@ export interface Settings {
   workdayEnd: string;
   /** calendar that receives blocks from "plan my day" */
   planCalendar: 'work' | 'personal';
+  /** work<->personal mirror: busy blocks of one calendar copied into the other. Off unless the owner turns it on */
+  calendarMirror: boolean;
   /** work<->personal mirror shows real titles instead of "Зайнято" */
   mirrorDetails: boolean;
   projects: string[];
@@ -55,6 +57,7 @@ export const DEFAULT_SETTINGS = (timezone: string): Settings => ({
   workdayStart: '09:00',
   workdayEnd: '19:00',
   planCalendar: 'work',
+  calendarMirror: false,
   mirrorDetails: false,
   projects: [],
   categories: { expense: [], income: [] },

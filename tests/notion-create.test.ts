@@ -109,3 +109,13 @@ describe('voice fallback', () => {
     expect(backup.streamPcm).not.toHaveBeenCalled();
   });
 });
+
+describe('voice provider behind the fallback', () => {
+  it('the cabinet still sees ElevenLabs (its voices, its preview) when it is wrapped in a fallback', async () => {
+    const { ElevenLabs, OpenAiTts, ttsProvider } = await import('../src/integrations/tts.js');
+    const eleven = new ElevenLabs('k', { fast: 'f', quality: 'q' }, async () => ({ voice: 'v', style: 'natural' }));
+    expect(ttsProvider(new FallbackTts(eleven, new OpenAiTts('k')))).toBe('elevenlabs');
+    expect(ttsProvider(new OpenAiTts('k'))).toBe('openai');
+    expect(ttsProvider(undefined)).toBe('none');
+  });
+});

@@ -6,7 +6,7 @@ import { connectedAccounts, type Services } from '../services.js';
 import type { Settings } from '../store/settings.js';
 import { buildToday } from '../modules/dashboard.js';
 import { readPagesText } from '../notion/context.js';
-import { ELEVEN_VOICES, ElevenLabs, OPENAI_VOICES } from '../integrations/tts.js';
+import { ELEVEN_VOICES, OPENAI_VOICES, ttsProvider } from '../integrations/tts.js';
 import { buildTools, customTools, toolSpecs, type Tool, type ToolContext } from './tools.js';
 
 const MAX_STEPS = 6;
@@ -62,7 +62,7 @@ async function ownerContext(s: Services): Promise<string> {
 async function assistantGender(s: Services): Promise<'female' | 'male' | undefined> {
   const st = await s.settings.get();
   const label =
-    s.tts instanceof ElevenLabs
+    ttsProvider(s.tts) === 'elevenlabs'
       ? ELEVEN_VOICES.find((v) => v.id === st.elevenVoice)?.label
       : s.tts
         ? OPENAI_VOICES.find((v) => v.id === st.ttsVoice)?.label

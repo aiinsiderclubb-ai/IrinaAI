@@ -200,7 +200,7 @@ export class OpenAiTts implements Tts {
  */
 export class FallbackTts implements Tts {
   constructor(
-    private primary: Tts & { speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> },
+    readonly primary: Tts & { speak(text: string, override?: Partial<VoiceChoice>): Promise<Uint8Array> },
     private backup: Tts,
     private onFallback: (e: unknown) => void = () => {},
   ) {}
@@ -230,4 +230,10 @@ export class FallbackTts implements Tts {
       await this.backup.streamPcm(text, onChunk);
     }
   }
+}
+
+/** Which service speaks: the cabinet shows that service's voices. A fallback reports its primary. */
+export function ttsProvider(t: Tts | undefined): 'elevenlabs' | 'openai' | 'other' | 'none' {
+  const main = t instanceof FallbackTts ? t.primary : t;
+  return main instanceof ElevenLabs ? 'elevenlabs' : main instanceof OpenAiTts ? 'openai' : main ? 'other' : 'none';
 }

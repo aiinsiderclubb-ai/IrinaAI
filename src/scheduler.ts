@@ -92,9 +92,9 @@ export function buildJobs(): Job[] {
       due: (now) => String(Math.floor(now.toMillis() / 300_000)),
       run: async (s) => {
         const accounts = await connectedAccounts(s);
-        // the mirror writes blocks into both calendars: never while the calendar is read-only
-        if (!s.calendar || accounts.length < 2 || !(await calendarWritable(s))) return;
+        // the mirror writes blocks into both calendars: only when the owner turned it on, never while read-only
         const st = await s.settings.get();
+        if (!st.calendarMirror || !s.calendar || accounts.length < 2 || !(await calendarWritable(s))) return;
         await syncCalendars({ db: s.db, calendar: s.calendar, clock: s.clock, timeZone: st.timezone, details: st.mirrorDetails, log: s.log });
       },
     },

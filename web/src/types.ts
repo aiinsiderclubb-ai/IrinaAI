@@ -101,6 +101,7 @@ export interface Settings {
   workdayStart: string;
   workdayEnd: string;
   planCalendar: 'work' | 'personal';
+  calendarMirror: boolean;
   mirrorDetails: boolean;
   projects: string[];
   categories: { expense: string[]; income: string[] };

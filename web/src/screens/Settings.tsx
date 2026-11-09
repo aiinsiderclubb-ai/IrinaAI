@@ -26,9 +26,9 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
     setSaving(true);
     setError(null);
     try {
-      const { assistantName, ownerName, ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
+      const { assistantName, ownerName, ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, calendarMirror, mirrorDetails, eventsGeo, eventsWeekday, eventsTime } = form;
       const eventsTopics = form.eventsTopics.map((t) => t.trim()).filter(Boolean);
-      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
+      const next = await api.patch<Settings>('/api/settings', { assistantName: assistantName.trim(), ownerName: ownerName.trim(), ownerGender, ttsVoice, ttsStyle, elevenVoice, morningTime, eveningTime, workdayStart, workdayEnd, voiceReplies, planCalendar, calendarMirror, mirrorDetails, eventsGeo, eventsWeekday, eventsTime, eventsTopics });
       settings.setData(next);
       toast('Збережено');
     } catch (err) {
@@ -132,9 +132,15 @@ export function SettingsScreen({ onLogout }: { onLogout: () => void }) {
             </div>
             <div style={{ padding: '0 20px 18px' }}>
               <label className="toggle">
-                <input type="checkbox" checked={form.mirrorDetails} onChange={(e) => set('mirrorDetails', e.target.checked)} />
-                Показувати назви подій при синхронізації календарів (інакше — «Зайнято»)
+                <input type="checkbox" checked={form.calendarMirror} onChange={(e) => set('calendarMirror', e.target.checked)} />
+                Синхронізувати календарі: зайнятий час одного з’являється блоком в іншому
               </label>
+              {form.calendarMirror && (
+                <label className="toggle">
+                  <input type="checkbox" checked={form.mirrorDetails} onChange={(e) => set('mirrorDetails', e.target.checked)} />
+                  Показувати назви подій (інакше — «Зайнято»)
+                </label>
+              )}
             </div>
           </section>
 

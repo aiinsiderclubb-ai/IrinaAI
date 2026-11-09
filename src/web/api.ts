@@ -14,7 +14,7 @@ import { kvGet, kvSet } from '../store/kv.js';
 import { signState } from '../lib/crypto.js';
 import { errMsg } from '../lib/log.js';
 import { HHMM } from '../lib/time.js';
-import { ELEVEN_VOICES, ElevenLabs, OPENAI_VOICES, OpenAiTts, plainForSpeech, VOICE_STYLES } from '../integrations/tts.js';
+import { ELEVEN_VOICES, OPENAI_VOICES, plainForSpeech, ttsProvider, VOICE_STYLES } from '../integrations/tts.js';
 import { buildToday } from '../modules/dashboard.js';
 import { summarize } from '../modules/finance.js';
 import { classifyImport } from '../modules/importer.js';
@@ -55,6 +55,7 @@ const settingsPatch = z
     ttsStyle: z.enum(Object.keys(VOICE_STYLES) as [string, ...string[]]),
     elevenVoice: z.enum(ELEVEN_VOICES.map((v) => v.id) as [string, ...string[]]),
     planCalendar: z.enum(['work', 'personal']),
+    calendarMirror: z.boolean(),
     mirrorDetails: z.boolean(),
     eventsTopics: z.array(z.string().trim().min(1)).max(3),
     eventsGeo: z.string().max(200),
@@ -415,22 +416,23 @@ export async function registerWeb(app: FastifyInstance, s: Services, agent: Agen
   if (s.integrations) registerIntegrations(app, s);
 
   /** Voice picker: catalogue + a sample in the chosen voice/style (not saved). */
-  const provider = () => (s.tts instanceof ElevenLabs ? 'elevenlabs' : s.tts instanceof OpenAiTts ? 'openai' : s.tts ? 'other' : 'none');
+  const provider = () => ttsProvider(s.tts);
 
   app.get('/api/voice/options', async () => ({
     provider: provider(),
-    voices: s.tts instanceof ElevenLabs ? ELEVEN_VOICES : OPENAI_VOICES,
+    voices: provider() === 'elevenlabs' ? ELEVEN_VOICES : OPENAI_VOICES,
     styles: Object.entries(VOICE_STYLES).map(([id, v]) => ({ id, label: v.label })),
   }));
 
   app.post<{ Body: { voice?: string; style?: string } }>('/api/voice/preview', async (req, reply) => {
     if (!s.tts) return reply.code(404).send({ error: 'Голос не підключено' });
-    const catalogue = s.tts instanceof ElevenLabs ? ELEVEN_VOICES : OPENAI_VOICES;
+    const catalogue = provider() === 'elevenlabs' ? ELEVEN_VOICES : OPENAI_VOICES;
     const voice = catalogue.find((v) => v.id === req.body?.voice)?.id;
     const style = req.body?.style && req.body.style in VOICE_STYLES ? req.body.style : undefined;
     const st = await s.settings.get();
     const text = `Привіт${st.ownerName ? `, ${st.ownerName}` : ''}! Я ${st.assistantName}. О третій у тебе рев’ю дизайну, а до того є хвилин сорок — можемо швиденько закрити лист юристу. Як тобі?`;
-    const mp3 = s.tts instanceof ElevenLabs || s.tts instanceof OpenAiTts ? await s.tts.speak(text, { voice, style }) : await s.tts.speak(text);
+    const tts = s.tts as { speak(text: string, override?: { voice?: string; style?: string }): Promise<Uint8Array> };
+    const mp3 = provider() === 'other' ? await tts.speak(text) : await tts.speak(text, { voice, style });
     return { audio: Buffer.from(mp3).toString('base64') };
   });
 
