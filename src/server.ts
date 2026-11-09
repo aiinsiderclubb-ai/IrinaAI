@@ -4,6 +4,7 @@ import { verifyState } from './lib/crypto.js';
 import { errMsg } from './lib/log.js';
 import type { Services } from './services.js';
 import type { Slot } from './store/tokens.js';
+import { PRIVACY_HTML } from './web/privacy.js';
 
 /** Updates are acknowledged immediately and processed one by one (LLM calls outlive Telegram's webhook timeout). */
 export class SerialQueue {
@@ -31,6 +32,8 @@ export function buildServer(s: Services, bot: Bot, queue = new SerialQueue()): F
       return reply.code(503).send({ ok: false });
     }
   });
+
+  app.get('/privacy', async (_req, reply) => reply.type('text/html; charset=utf-8').send(PRIVACY_HTML));
 
   app.post('/telegram/webhook', async (req, reply) => {
     if (req.headers['x-telegram-bot-api-secret-token'] !== s.cfg.TELEGRAM_WEBHOOK_SECRET) return reply.code(401).send();
