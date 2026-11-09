@@ -19,6 +19,8 @@ export interface ActionPayloads {
   'waiting.add': { title: string; project?: string; from?: string; due?: string };
   'waiting.resolve': { id: string; label: string };
   'calendar.create': { account: Account; title: string; start: string; end: string; description?: string; location?: string };
+  'calendar.update': { account: Account; id: string; label: string; title?: string; start?: string; end?: string; allDay?: boolean; location?: string; description?: string };
+  'calendar.delete': { account: Account; id: string; label: string };
   'plan.apply': { account: Account; blocks: Array<{ taskId: string; title: string; start: string; end: string }> };
   'finance.record': { date: string; amount: number; currency: string; kind: 'expense' | 'income'; category: string; scope: 'personal' | 'project'; project?: string; note: string };
   'custom.webhook': { integrationId: string; params: Record<string, unknown>; label: string };
@@ -89,6 +91,18 @@ export const EXECUTORS: Executors = {
     const tz = (await s.settings.get()).timezone;
     const ev = await requireCalendar(s).create(p.account, { title: p.title, start: p.start, end: p.end, timeZone: tz, description: p.description, location: p.location });
     return `Подію створено в календарі (${CAL_NAME[p.account]}): «${ev.title}».${ev.link ? ` ${ev.link}` : ''}`;
+  },
+
+  async 'calendar.update'(s, p) {
+    const tz = (await s.settings.get()).timezone;
+    const { account, id, label, ...patch } = p;
+    await requireCalendar(s).patch(account, id, { ...patch, timeZone: tz });
+    return `Подію оновлено (${CAL_NAME[account]}): ${label}.`;
+  },
+
+  async 'calendar.delete'(s, p) {
+    await requireCalendar(s).remove(p.account, p.id);
+    return `Подію видалено з календаря (${CAL_NAME[p.account]}): ${p.label}.`;
   },
 
   async 'plan.apply'(s, p) {

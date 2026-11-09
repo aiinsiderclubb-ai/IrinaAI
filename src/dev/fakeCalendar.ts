@@ -1,4 +1,4 @@
-import type { Account, CalEvent, CalendarInfo, CalendarPort, NewEvent } from '../integrations/google-calendar.js';
+import type { Account, CalEvent, CalendarInfo, CalendarPort, EventPatch, NewEvent } from '../integrations/google-calendar.js';
 
 export class FakeCalendar implements CalendarPort {
   async calendars(account: Account): Promise<CalendarInfo[]> {
@@ -29,13 +29,20 @@ export class FakeCalendar implements CalendarPort {
     return this.add(account, { title: ev.title, start: ev.start, end: ev.end, mirror: ev.mirror ?? false, location: ev.location });
   }
 
-  async patch(account: Account, id: string, p: Partial<NewEvent>): Promise<void> {
+  async get(account: Account, id: string): Promise<CalEvent | undefined> {
+    const e = this.events[account].find((x) => x.id === id);
+    return e ? { ...e } : undefined;
+  }
+
+  async patch(account: Account, id: string, p: EventPatch): Promise<void> {
     this.calls.patch++;
     const e = this.events[account].find((x) => x.id === id);
     if (!e) throw new Error('404');
     if (p.title !== undefined) e.title = p.title;
     if (p.start) e.start = p.start;
     if (p.end) e.end = p.end;
+    if (p.location !== undefined) e.location = p.location;
+    if (p.description !== undefined) e.description = p.description;
   }
 
   async remove(account: Account, id: string): Promise<void> {

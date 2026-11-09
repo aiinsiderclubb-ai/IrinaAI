@@ -1,4 +1,5 @@
 import type { GoogleAuth } from './google-auth.js';
+import { HttpError } from '../lib/http.js';
 
 export type Account = 'work' | 'personal';
 export const ACCOUNTS: Account[] = ['work', 'personal'];
@@ -17,10 +18,17 @@ export interface CalEvent {
   /** copy created by the work<->personal mirror, never a source */
   mirror: boolean;
   cancelled: boolean;
+  /** one occurrence of a repeating event */
+  recurring?: boolean;
   location?: string;
   description?: string;
   link?: string;
 }
+
+export type EventPatch = Partial<Pick<NewEvent, 'title' | 'start' | 'end' | 'timeZone' | 'location' | 'description'>> & {
+  /** start/end are dates (YYYY-MM-DD), not date-times */
+  allDay?: boolean;
+};
 
 export interface NewEvent {
   title: string;
@@ -36,7 +44,8 @@ export interface NewEvent {
 export interface CalendarPort {
   list(account: Account, fromISO: string, toISO: string): Promise<CalEvent[]>;
   create(account: Account, ev: NewEvent): Promise<CalEvent>;
-  patch(account: Account, id: string, patch: Partial<Pick<NewEvent, 'title' | 'start' | 'end' | 'timeZone'>>): Promise<void>;
+  get(account: Account, id: string): Promise<CalEvent | undefined>;
+  patch(account: Account, id: string, patch: EventPatch): Promise<void>;
   remove(account: Account, id: string): Promise<void>;
   calendars?(account: Account): Promise<CalendarInfo[]>;
 }
@@ -63,6 +72,7 @@ function fromApi(account: Account, e: any): CalEvent {
     busy: e.transparency !== 'transparent',
     mirror: e.extendedProperties?.private?.aia_mirror === '1',
     cancelled: e.status === 'cancelled',
+    recurring: Boolean(e.recurringEventId),
     location: e.location,
     description: e.description,
     link: e.htmlLink,
@@ -114,13 +124,26 @@ export class GoogleCalendar implements CalendarPort {
     return fromApi(account, res);
   }
 
-  async patch(account: Account, id: string, p: Partial<Pick<NewEvent, 'title' | 'start' | 'end' | 'timeZone'>>): Promise<void> {
+  async get(account: Account, id: string): Promise<CalEvent | undefined> {
+    try {
+      const e = await this.auth.authedJson<any>(slotOf(account), `${this.base(account)}/${encodeURIComponent(id)}`);
+      return e.status === 'cancelled' ? undefined : fromApi(account, e);
+    } catch (err) {
+      if (err instanceof HttpError && (err.status === 404 || err.status === 410)) return undefined;
+      throw err;
+    }
+  }
+
+  async patch(account: Account, id: string, p: EventPatch): Promise<void> {
+    const time = (v: string) => (p.allDay ? { date: v.slice(0, 10), dateTime: null } : { dateTime: v, timeZone: p.timeZone, date: null });
     await this.auth.authedJson(slotOf(account), `${this.base(account)}/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       json: {
         ...(p.title !== undefined ? { summary: p.title } : {}),
-        ...(p.start ? { start: { dateTime: p.start, timeZone: p.timeZone } } : {}),
-        ...(p.end ? { end: { dateTime: p.end, timeZone: p.timeZone } } : {}),
+        ...(p.location !== undefined ? { location: p.location } : {}),
+        ...(p.description !== undefined ? { description: p.description } : {}),
+        ...(p.start ? { start: time(p.start) } : {}),
+        ...(p.end ? { end: time(p.end) } : {}),
       },
     });
   }

@@ -41,7 +41,7 @@ export interface Tool<T extends z.ZodType = z.ZodType> {
 const date = z.string().describe('Дата YYYY-MM-DD');
 const dateTime = z.string().describe('Локальний час YYYY-MM-DDTHH:mm (часовий пояс власника) або дата YYYY-MM-DD');
 
-const CALENDAR_KINDS = new Set<ActionKind>(['calendar.create', 'plan.apply']);
+const CALENDAR_KINDS = new Set<ActionKind>(['calendar.create', 'calendar.update', 'calendar.delete', 'plan.apply']);
 const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save', 'page.create']);
 
 async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
@@ -285,6 +285,7 @@ export function buildTools(): Tool[] {
             const en = new Date(e.end).getTime();
             const status = e.allDay ? 'all_day' : en <= now ? 'past' : st <= now ? 'ongoing' : 'upcoming';
             return {
+              id: e.id,
               calendar: e.account,
               title: e.title,
               start: e.allDay ? e.start : DateTime.fromMillis(st, { zone }).toFormat('yyyy-LL-dd HH:mm'),
@@ -344,6 +345,91 @@ export function buildTools(): Tool[] {
       const payload = { account, title: a.title, start: start.toISO()!, end: end.toISO()!, description: a.description, location: a.location };
       const res = await propose(ctx, 'calendar.create', payload, `Створити подію «${a.title}» ${start.toFormat('dd.LL HH:mm')}–${end.toFormat('HH:mm')} (${account})${conflictNote}`);
       return { ...res, conflicts: conflictNote ? conflictNote.trim() : undefined };
+    },
+  });
+
+  /** the event the owner means, read fresh from Google: id and calendar come from calendar_list */
+  async function findEvent(s: Services, calendar: Account, id: string) {
+    if (!s.calendar) return { error: { status: 'error', note: 'Календар не підключено.' } } as const;
+    const ev = await s.calendar.get(calendar, id);
+    if (!ev) return { error: { status: 'error', note: 'Подію не знайдено: візьми id і calendar з calendar_list.' } } as const;
+    if (ev.mirror) return { error: { status: 'error', note: 'Це копія-віддзеркалення з іншого календаря; змінюй оригінал.' } } as const;
+    return { ev } as const;
+  }
+
+  const when = (e: { start: string; end: string; allDay: boolean }, zone: string) =>
+    e.allDay ? DateTime.fromISO(e.start, { zone }).toFormat('dd.LL') + ' (весь день)' : `${DateTime.fromISO(e.start, { zone }).toFormat('dd.LL HH:mm')}–${DateTime.fromISO(e.end, { zone }).toFormat('HH:mm')}`;
+
+  add({
+    name: 'calendar_update',
+    description:
+      'Підготувати зміну наявної події: перенести (start, і end якщо змінюється тривалість), перейменувати, змінити місце чи опис. id і calendar бери з calendar_list. Якщо дано лише новий start — тривалість зберігається.',
+    schema: z.object({
+      event_id: z.string(),
+      calendar: accountEnum,
+      title: z.string().optional(),
+      start: z.string().optional().describe('YYYY-MM-DDTHH:mm, для події на весь день YYYY-MM-DD'),
+      end: z.string().optional().describe('YYYY-MM-DDTHH:mm, для події на весь день YYYY-MM-DD'),
+      location: z.string().optional(),
+      description: z.string().optional(),
+    }),
+    proposes: true,
+    async run(a, ctx) {
+      const { s } = ctx;
+      const zone = (await s.settings.get()).timezone;
+      const found = await findEvent(s, a.calendar, a.event_id);
+      if ('error' in found) return found.error;
+      const ev = found.ev;
+      const payload: ActionPayloads['calendar.update'] = { account: a.calendar, id: ev.id, label: '' };
+      const changes: string[] = [];
+      if (a.start || a.end) {
+        const oldStart = DateTime.fromISO(ev.start, { zone });
+        const oldEnd = DateTime.fromISO(ev.end, { zone });
+        const start = a.start ? parseLocal(a.start, zone) : oldStart;
+        const end = a.end ? parseLocal(a.end, zone) : start.plus(oldEnd.diff(oldStart));
+        if (end <= start) return { status: 'error', note: 'Кінець події раніше за початок.' };
+        if (ev.allDay) {
+          payload.allDay = true;
+          payload.start = start.toISODate()!;
+          payload.end = end.toISODate()!;
+        } else {
+          payload.start = start.toISO()!;
+          payload.end = end.toISO()!;
+        }
+        changes.push(`${when(ev, zone)} → ${when({ start: start.toISO()!, end: end.toISO()!, allDay: ev.allDay }, zone)}`);
+      }
+      if (a.title !== undefined && a.title !== ev.title) {
+        payload.title = a.title;
+        changes.push(`назва → «${a.title}»`);
+      }
+      if (a.location !== undefined) {
+        payload.location = a.location;
+        changes.push(`місце → ${a.location || '(без місця)'}`);
+      }
+      if (a.description !== undefined) {
+        payload.description = a.description;
+        changes.push('опис оновлено');
+      }
+      if (!changes.length) return { status: 'error', note: 'Нічого не змінюється.' };
+      const repeat = ev.recurring ? ' (лише це повторення)' : '';
+      payload.label = `«${ev.title}» ${changes.join(', ')}${repeat}`;
+      return propose(ctx, 'calendar.update', payload, `Змінити подію ${payload.label} (${a.calendar})`);
+    },
+  });
+
+  add({
+    name: 'calendar_delete',
+    description: 'Підготувати видалення наявної події з календаря. id і calendar бери з calendar_list.',
+    schema: z.object({ event_id: z.string(), calendar: accountEnum }),
+    proposes: true,
+    async run(a, ctx) {
+      const { s } = ctx;
+      const zone = (await s.settings.get()).timezone;
+      const found = await findEvent(s, a.calendar, a.event_id);
+      if ('error' in found) return found.error;
+      const ev = found.ev;
+      const label = `«${ev.title}» ${when(ev, zone)}${ev.recurring ? ' (лише це повторення)' : ''}`;
+      return propose(ctx, 'calendar.delete', { account: a.calendar, id: ev.id, label }, `🗑 Видалити подію ${label} (${a.calendar})`);
     },
   });
 

@@ -72,6 +72,8 @@ const KIND_LABEL: Record<string, string> = {
   'waiting.add': 'Очікую відповідь',
   'waiting.resolve': 'Відповідь отримано',
   'calendar.create': 'Подія в календарі',
+  'calendar.update': 'Зміна події',
+  'calendar.delete': 'Видалення події',
   'plan.apply': 'План дня',
   'finance.record': 'Фінанси',
   'note.save': 'Матеріал',
