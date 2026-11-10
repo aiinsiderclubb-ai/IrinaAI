@@ -91,7 +91,7 @@ export function formatEvents(events: FoundEvent[]): string {
 
 export async function searchEvents(deps: { db: Db; llm: Llm; settings: Settings; today: string }): Promise<{ fresh: FoundEvent[]; total: number }> {
   if (!deps.settings.eventsTopics.length) throw new Error('Теми для пошуку подій не задано (settings.eventsTopics)');
-  const answer = await deps.llm.webSearch(buildSearchPrompt(deps.settings, deps.today));
+  const { text: answer } = await deps.llm.webSearch(buildSearchPrompt(deps.settings, deps.today));
   const found = parseEvents(answer);
   const fresh = await filterNew(deps.db, found);
   return { fresh, total: found.length };

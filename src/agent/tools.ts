@@ -15,6 +15,7 @@ import type { SocialData } from '../integrations/social-types.js';
 import type { PendingAction } from '../store/pending.js';
 import { connectedAccounts, listAllEvents, type Services } from '../services.js';
 import { listSubPages, readSubPage } from '../notion/context.js';
+import { errMsg } from '../lib/log.js';
 
 export interface ToolContext {
   s: Services;
@@ -598,6 +599,30 @@ export function buildTools(): Tool[] {
       const today = DateTime.fromJSDate(s.clock(), { zone: settings.timezone }).toISODate()!;
       const r = await searchEvents({ db: s.db, llm: s.llm, settings, today });
       return { text: formatEvents(r.fresh) };
+    },
+  });
+
+  add({
+    name: 'web_search',
+    description:
+      'Пошук в інтернеті: свіжі новини, ціни, курси валют, погода, події, інформація про компанії, людей, сайти, продукти, законодавство. Виклич, коли відповідь залежить від актуальних даних, яких немає в розмові. Запит формулюй коротко, як для пошуковика; не додавай у нього приватних даних власника без потреби.',
+    schema: z.object({ query: z.string().min(2).max(300).describe('Що шукати') }),
+    proposes: false,
+    async run(a, { s }) {
+      const settings = await s.settings.get();
+      const today = DateTime.fromJSDate(s.clock(), { zone: settings.timezone }).toISODate()!;
+      const prompt = [
+        `Сьогодні ${today}, часовий пояс ${settings.timezone}.`,
+        `Знайди в інтернеті й дай стислу фактичну відповідь українською: ${a.query.trim()}`,
+        'Лише факти з джерел: дати, цифри, назви. Нічого не вигадуй; не знайшов — так і скажи.',
+      ].join('\n');
+      try {
+        const r = await s.llm.webSearch(prompt);
+        if (!r.text) return { status: 'empty', note: 'Пошук нічого не дав. Чесно скажи про це власнику.' };
+        return { status: 'ok', answer: r.text.slice(0, 4000), sources: r.sources.slice(0, 6) };
+      } catch (e) {
+        return { status: 'error', note: `Пошук зараз недоступний (${errMsg(e).slice(0, 200)}). Не вигадуй відповідь.` };
+      }
     },
   });
 

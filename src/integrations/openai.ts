@@ -54,7 +54,13 @@ export interface Llm {
   chat(args: ChatArgs): Promise<ChatResult>;
   /** `prompt` biases recognition (names, short answers like «так») */
   transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string, model?: string): Promise<string>;
-  webSearch(prompt: string): Promise<string>;
+  webSearch(prompt: string): Promise<WebAnswer>;
+}
+
+/** what a web search returns: the model's answer and the pages it cited */
+export interface WebAnswer {
+  text: string;
+  sources: Array<{ title: string; url: string }>;
 }
 
 const BASE = 'https://api.openai.com/v1';
@@ -267,19 +273,26 @@ export class OpenAi implements Llm {
   }
 
   /** Responses API with the built-in web search tool. Returns the model's text answer. */
-  async webSearch(prompt: string): Promise<string> {
+  async webSearch(prompt: string): Promise<WebAnswer> {
+    const t0 = Date.now();
     const res = await httpJson<any>(`${BASE}/responses`, {
       method: 'POST',
       headers: this.headers,
       json: { model: this.models.search, tools: [{ type: 'web_search' }], input: prompt },
       timeoutMs: 180_000,
     });
+    this.track(this.models.search, res.usage, Date.now() - t0);
     const texts: string[] = [];
+    const sources = new Map<string, string>();
     for (const item of res.output ?? []) {
       if (item.type !== 'message') continue;
-      for (const c of item.content ?? []) if (c.type === 'output_text') texts.push(c.text);
+      for (const c of item.content ?? []) {
+        if (c.type !== 'output_text') continue;
+        texts.push(c.text);
+        for (const a of c.annotations ?? []) if (a.type === 'url_citation' && a.url && !sources.has(a.url)) sources.set(a.url, a.title || a.url);
+      }
     }
-    return texts.join('\n').trim();
+    return { text: texts.join('\n').trim(), sources: [...sources].map(([url, title]) => ({ title, url })) };
   }
 }
 

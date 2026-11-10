@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { createPgliteDb, migrate, type Db } from '../../src/db/index.js';
 import type { Config } from '../../src/config.js';
-import type { ChatResult, Llm, LlmMessage, ToolSpec } from '../../src/integrations/openai.js';
+import type { ChatResult, Llm, LlmMessage, ToolSpec, WebAnswer } from '../../src/integrations/openai.js';
 import { silentLog } from '../../src/lib/log.js';
 import { NotionRepo } from '../../src/notion/repo.js';
 import type { Services } from '../../src/services.js';
@@ -18,6 +18,8 @@ export class ScriptedLlm implements Llm {
   calls: Array<{ messages: LlmMessage[]; tools?: ToolSpec[]; model?: string }> = [];
   transcripts: string[] = [];
   searchAnswer = '[]';
+  searchSources: Array<{ title: string; url: string }> = [];
+  searchPrompts: string[] = [];
   constructor(public script: Array<ChatResult | ((messages: LlmMessage[]) => ChatResult)> = []) {}
 
   async chat(args: { messages: LlmMessage[]; tools?: ToolSpec[]; model?: string; onText?: (d: string) => void }): Promise<ChatResult> {
@@ -31,8 +33,9 @@ export class ScriptedLlm implements Llm {
   async transcribe(): Promise<string> {
     return this.transcripts.shift() ?? '';
   }
-  async webSearch(): Promise<string> {
-    return this.searchAnswer;
+  async webSearch(prompt: string): Promise<WebAnswer> {
+    this.searchPrompts.push(prompt);
+    return { text: this.searchAnswer, sources: this.searchSources };
   }
 }
 

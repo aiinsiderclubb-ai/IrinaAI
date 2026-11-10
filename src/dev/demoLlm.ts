@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import type { ChatResult, Llm, LlmMessage } from '../integrations/openai.js';
+import type { ChatResult, Llm, LlmMessage, WebAnswer } from '../integrations/openai.js';
 
 const HELP =
   'Демо-режим без OpenAI: розумію лише кілька фраз. Спробуйте: «склади план дня», «які задачі на сьогодні?», ' +
@@ -34,9 +34,12 @@ export class DemoLlm implements Llm {
     return 'склади план дня';
   }
 
-  async webSearch(): Promise<string> {
+  async webSearch(): Promise<WebAnswer> {
     const d = DateTime.now().plus({ weeks: 3 }).toISODate();
-    return JSON.stringify([{ title: 'Demo AI Business Forum', why: 'Демо-подія для перевірки інтерфейсу', start: d, end: d, location: 'Онлайн', price: 'безкоштовно', url: 'https://example.com/demo-forum' }]);
+    return {
+      text: JSON.stringify([{ title: 'Demo AI Business Forum', why: 'Демо-подія для перевірки інтерфейсу', start: d, end: d, location: 'Онлайн', price: 'безкоштовно', url: 'https://example.com/demo-forum' }]),
+      sources: [{ title: 'Demo AI Business Forum', url: 'https://example.com/demo-forum' }],
+    };
   }
 }
 
