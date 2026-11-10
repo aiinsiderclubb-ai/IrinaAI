@@ -65,6 +65,17 @@ export interface WebAnswer {
 
 const BASE = 'https://api.openai.com/v1';
 
+/** OpenAI tags cited links with ?utm_source=openai; the owner gets the plain link */
+export function cleanUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.searchParams.delete('utm_source');
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 export class OpenAi implements Llm {
   constructor(
     private apiKey: string,
@@ -288,8 +299,12 @@ export class OpenAi implements Llm {
       if (item.type !== 'message') continue;
       for (const c of item.content ?? []) {
         if (c.type !== 'output_text') continue;
-        texts.push(c.text);
-        for (const a of c.annotations ?? []) if (a.type === 'url_citation' && a.url && !sources.has(a.url)) sources.set(a.url, a.title || a.url);
+        texts.push(c.text.replace(/([?&])utm_source=openai(&?)/g, (_m: string, p: string, n: string) => (n ? p : '')));
+        for (const a of c.annotations ?? []) {
+          if (a.type !== 'url_citation' || !a.url) continue;
+          const url = cleanUrl(a.url);
+          if (!sources.has(url)) sources.set(url, a.title || url);
+        }
       }
     }
     return { text: texts.join('\n').trim(), sources: [...sources].map(([url, title]) => ({ title, url })) };

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Agent } from '../src/agent/agent.js';
+import { cleanUrl } from '../src/integrations/openai.js';
 import { makeEnv, say, toolCall } from './helpers/services.js';
 
 describe('web search', () => {
@@ -38,5 +39,10 @@ describe('web search', () => {
     env.llm.script.push(say('ок'));
     await new Agent(env.s).handle(42, 'привіт');
     expect(env.llm.calls[0]!.messages[0]!.content as string).toContain('web_search');
+  });
+
+  it('cited links lose the utm tag OpenAI adds', () => {
+    expect(cleanUrl('https://bank.gov.ua/rates?utm_source=openai')).toBe('https://bank.gov.ua/rates');
+    expect(cleanUrl('https://x.ua/a?id=5&utm_source=openai')).toBe('https://x.ua/a?id=5');
   });
 });
