@@ -116,7 +116,7 @@ export interface DialProps {
 
 /** The day as a radar: 24 hours around the circle, events as arcs, a sweeping "now" hand. */
 export function DayDial({ events, date, timeZone, workday, size = 260, compact = false }: DialProps) {
-  const now = useNow(compact ? 15_000 : 1000);
+  const now = useNow(30_000);
   const C = 130;
   const nowP = tzParts(now, timeZone);
   const nowMin = nowP.date === date ? nowP.min : nowP.date > date ? 1440 : 0;
@@ -157,7 +157,6 @@ export function DayDial({ events, date, timeZone, workday, size = 260, compact =
   });
 
   const hhmm = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone });
-  const sec = now.toLocaleTimeString('uk-UA', { second: '2-digit', timeZone }).padStart(2, '0');
   const caption = current
     ? `зараз · ще ${durationText(current.m1 - nowMin)}`
     : next
@@ -177,12 +176,6 @@ export function DayDial({ events, date, timeZone, workday, size = 260, compact =
           </radialGradient>
         </defs>
         <circle cx={C} cy={C} r={126} className="dial-outer" />
-        <g className="dial-spin">
-          <circle cx={C} cy={C} r={128} className="dial-orbit" />
-        </g>
-        <g className="dial-spin-rev">
-          <circle cx={C} cy={C} r={66} className="dial-orbit inner" />
-        </g>
         <circle cx={C} cy={C} r={86} fill="url(#dial-core)" />
         {ticks}
         {labels}
@@ -202,15 +195,31 @@ export function DayDial({ events, date, timeZone, workday, size = 260, compact =
           </g>
         )}
       </svg>
+      {/* the orbits turn as separate layers: the GPU spins them without repainting the dial */}
+      <div className="dial-orbits" aria-hidden="true">
+        <svg viewBox="0 0 260 260">
+          <circle cx={C} cy={C} r={128} className="dial-orbit" />
+        </svg>
+      </div>
+      <div className="dial-orbits rev" aria-hidden="true">
+        <svg viewBox="0 0 260 260">
+          <circle cx={C} cy={C} r={66} className="dial-orbit inner" />
+        </svg>
+      </div>
       <div className="dial-center">
         <div className="dial-time">
           {hhmm}
-          {!compact && <span className="dial-sec">{sec}</span>}
+          {!compact && <Seconds timeZone={timeZone} />}
         </div>
         <div className="dial-cap">{caption}</div>
       </div>
     </div>
   );
+}
+
+function Seconds({ timeZone }: { timeZone?: string }) {
+  const now = useNow(1000);
+  return <span className="dial-sec">{now.toLocaleTimeString('uk-UA', { second: '2-digit', timeZone }).padStart(2, '0')}</span>;
 }
 
 // ---------- ambient particle field behind the pages ----------
@@ -236,7 +245,9 @@ export function AmbientField() {
       cv.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    const count = Math.round(Math.min(90, (window.innerWidth * window.innerHeight) / 18000));
+    const weak = window.matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency ?? 8) <= 4;
+    const still = reduced() || weak;
+    const count = Math.round(Math.min(48, (window.innerWidth * window.innerHeight) / 30000));
     const pts = Array.from({ length: count }, () => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
@@ -276,23 +287,27 @@ export function AmbientField() {
     };
     const loop = (t: number) => {
       raf = requestAnimationFrame(loop);
-      if (document.hidden || t - last < 33) return; // ~30 fps is plenty for a drifting field
+      if (document.hidden || t - last < 42) return; // ~24 fps is plenty for a slow drift
       last = t;
       draw(t);
     };
     readColor();
     resize();
-    if (reduced()) draw(0);
+    if (still) draw(0);
     else raf = requestAnimationFrame(loop);
     const off = onThemeChange(() => {
       readColor();
-      if (reduced()) draw(0);
+      if (still) draw(0);
     });
-    window.addEventListener('resize', resize);
+    const onResize = () => {
+      resize();
+      if (still) draw(0);
+    };
+    window.addEventListener('resize', onResize);
     return () => {
       cancelAnimationFrame(raf);
       off();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
   return <canvas ref={ref} className="ambient" aria-hidden="true" />;
