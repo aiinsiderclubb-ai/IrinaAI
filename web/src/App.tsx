@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
-import { IconLogo, IconMoney, IconMoon, IconOrb, IconSettings, IconSun, IconTasks, IconToday } from './icons';
+import { IconMoney, IconMoon, IconOrb, IconSettings, IconSun, IconTasks, IconToday } from './icons';
 import { useTheme } from './theme';
 import { Finance } from './screens/Finance';
 import { Login } from './screens/Login';
@@ -11,7 +11,9 @@ import { Day } from './screens/Day';
 // three.js is heavy: load the core only when it is opened
 const Core = lazy(() => import('./screens/Core').then((m) => ({ default: m.Core })));
 import { useNudges } from './nudges';
-import { Loading, ToastHost } from './ui';
+import { Loading, ToastHost, useLoad } from './ui';
+import { AmbientField, HudBar } from './hud';
+import type { Settings } from './types';
 
 const ROUTES = [
   { path: 'core', label: 'Ядро', icon: IconOrb },
@@ -72,11 +74,12 @@ export function App() {
   const current: Route = (ROUTES.find((r) => r.path === resolved)?.path ?? 'core') as Route;
   return (
     <ToastHost>
+      {current !== 'core' && <AmbientField />}
       <div className={`shell ${current === 'core' ? 'shell-core' : ''}`}>
         <nav className="side" aria-label="Розділи">
           <a className="brand" href="#/core" aria-label="Ядро">
-            <span className="brand-mark">
-              <IconLogo size={18} />
+            <span className="brand-orb" aria-hidden="true">
+              <i />
             </span>
           </a>
           {ROUTES.map(({ path, label, icon: Icon }) => (
@@ -91,6 +94,7 @@ export function App() {
           </div>
         </nav>
         <main className={current === 'core' ? 'main main-full' : 'main'}>
+          {current !== 'core' && <TopBar section={ROUTES.find((r) => r.path === current)!.label} pending={pending} />}
           {current === 'core' && (
             <Suspense fallback={<div className="core" />}>
               <Core onChanged={refreshPending} />
@@ -104,6 +108,11 @@ export function App() {
       </div>
     </ToastHost>
   );
+}
+
+function TopBar({ section, pending }: { section: string; pending: number }) {
+  const { data } = useLoad<Settings>('/api/settings');
+  return <HudBar name={data?.assistantName ?? 'Асистент'} section={section} pending={pending} timeZone={data?.timezone} />;
 }
 
 function ThemeToggle() {

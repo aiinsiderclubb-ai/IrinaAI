@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { api, ApiError } from '../api';
-import { todayIso } from '../format';
+import { dueLabel, todayIso } from '../format';
+import { CountUp, Ring } from '../hud';
 import { IconPlus } from '../icons';
 import type { Task } from '../types';
 import { ErrorNote, Loading, useLoad, useToast } from '../ui';
@@ -46,10 +47,17 @@ export function Tasks() {
   };
 
   const projects = data?.projects ?? [];
+  const open = (data?.tasks ?? []).filter((t) => !t.done);
+  const tone = (t: Task) => dueLabel(t.due, today)?.tone;
+  const late = open.filter((t) => tone(t) === 'late').length;
+  const todayN = open.filter((t) => tone(t) === 'today').length;
+  const week = open.filter((t) => tone(t) === 'soon').length;
+  const total = Math.max(1, open.length);
   return (
     <div className="page">
       <div className="page-head">
         <div>
+          <div className="eyebrow">Notion · {projects.length} проєктів</div>
           <h1>Задачі</h1>
           <p>З вашого Notion. Зміни через асистента або тут.</p>
         </div>
@@ -65,6 +73,33 @@ export function Tasks() {
           </label>
         </div>
       </div>
+
+      {data && (
+        <div className="tiles">
+          {(
+            [
+              ['Відкрито', open.length, 1, 'accent'],
+              ['Сьогодні', todayN, todayN / total, 'warn'],
+              ['Найближчі дні', week, week / total, 'violet'],
+              ['Прострочено', late, late / total, late ? 'danger' : 'ok'],
+            ] as const
+          ).map(([k, v, share, t]) => (
+            <div className="card tile" key={k}>
+              <Ring value={share} size={52} stroke={3.5} tone={t}>
+                <span style={{ fontSize: 11 }} className="muted">
+                  {Math.round(share * 100)}%
+                </span>
+              </Ring>
+              <div>
+                <div className="mv">
+                  <CountUp value={v} />
+                </div>
+                <div className="mk">{k}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <form className="card card-pad row" onSubmit={add}>
         <input className="input" style={{ flex: '1 1 260px' }} placeholder="Нова задача…" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} aria-label="Назва задачі" />

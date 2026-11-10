@@ -1,7 +1,18 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { api } from '../api';
 import { dueLabel, longDate, num, time } from '../format';
+import { CountUp, DayDial, PanelHead, Ring, useNow } from '../hud';
 import { IconCheck } from '../icons';
+
+function NowLine({ timeZone }: { timeZone: string }) {
+  const now = useNow(30_000);
+  return (
+    <li className="now-line" aria-label="Зараз">
+      <span className="now-tag">{now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone })}</span>
+      <span className="now-rule" />
+    </li>
+  );
+}
 import type { Proposal, Settings, SocialData, Task, Today } from '../types';
 import { ErrorNote, Loading, ProposalCard, ReportModal, useLoad, useToast } from '../ui';
 
@@ -105,35 +116,92 @@ export function Day({ onChanged }: { onChanged: () => void }) {
   const timed = data.events.filter((e) => !e.allDay);
   const owner = settings.data?.ownerName;
 
+  const pendingCount = pending.data?.items.length ?? 0;
+  const late = [...data.focus, ...data.upcoming].filter((t) => dueLabel(t.due, data.date)?.tone === 'late').length;
+  const leftEvents = timed.filter((e) => new Date(e.end).getTime() > nowMs).length;
+  // where the NOW line goes: before the first event that has not ended yet
+  const nowIndex = data.events.findIndex((e) => !e.allDay && new Date(e.end).getTime() > nowMs);
+  const showNowLine = timed.length > 0 && !data.events.some((e) => !e.allDay && new Date(e.start).getTime() <= nowMs && new Date(e.end).getTime() > nowMs);
+
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">{longDate(data.date)}</div>
-          <h1>
-            {greeting(Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: data.timezone })))}
-            {owner ? `, ${owner}` : ''}
-          </h1>
-          <p>
-            {timed.length} подій · {data.focus.length} задач на сьогодні · {data.waiting.length} очікую
-          </p>
+      <section className="card hero">
+        <DayDial events={data.events} date={data.date} timeZone={data.timezone} workday={settings.data ? { start: settings.data.workdayStart, end: settings.data.workdayEnd } : undefined} />
+        <div className="hero-main">
+          <div>
+            <div className="eyebrow">{longDate(data.date)}</div>
+            <h1>
+              {greeting(Number(new Date().toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: data.timezone })))}
+              {owner ? `, ${owner}` : ''}
+            </h1>
+          </div>
+          <div className="metrics">
+            <a className="metric" href="#/day" onClick={(e) => (e.preventDefault(), document.querySelector('.timeline')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))}>
+              <Ring value={timed.length ? leftEvents / timed.length : 0} size={42} stroke={3}>
+                {null}
+              </Ring>
+              <div>
+                <div className="mv">
+                  <CountUp value={leftEvents} />
+                  <span className="muted" style={{ fontSize: 16 }}>/{timed.length}</span>
+                </div>
+                <div className="mk">подій попереду</div>
+              </div>
+            </a>
+            <a className="metric" href="#/tasks">
+              <Ring value={Math.min(1, data.focus.length / 8)} size={42} stroke={3} tone="violet">
+                {null}
+              </Ring>
+              <div>
+                <div className="mv">
+                  <CountUp value={data.focus.length} />
+                </div>
+                <div className="mk">задач на сьогодні</div>
+              </div>
+            </a>
+            <div className={`metric ${late ? 'danger' : ''}`}>
+              <Ring value={late ? 1 : 0} size={42} stroke={3} tone={late ? 'danger' : 'ok'}>
+                {null}
+              </Ring>
+              <div>
+                <div className="mv">
+                  <CountUp value={late} />
+                </div>
+                <div className="mk">прострочено</div>
+              </div>
+            </div>
+            <div className={`metric ${pendingCount ? 'warn' : ''}`}>
+              <Ring value={pendingCount ? 1 : 0} size={42} stroke={3} tone="warn">
+                {null}
+              </Ring>
+              <div>
+                <div className="mv">
+                  <CountUp value={pendingCount} />
+                </div>
+                <div className="mk">на підтвердження</div>
+              </div>
+            </div>
+          </div>
+          <div className="hero-actions">
+            <button className="btn btn-primary" onClick={planDay} disabled={planning}>
+              {planning ? 'Планую…' : 'Скласти план дня'}
+            </button>
+            <button className="btn" onClick={() => setReport('morning')}>
+              Ранковий звіт
+            </button>
+            <button className="btn" onClick={() => setReport('evening')}>
+              Вечірній звіт
+            </button>
+          </div>
         </div>
-        <div className="row">
-          <button className="btn" onClick={() => setReport('morning')}>
-            Ранковий звіт
-          </button>
-          <button className="btn" onClick={() => setReport('evening')}>
-            Вечірній звіт
-          </button>
-          <button className="btn btn-primary" onClick={planDay} disabled={planning}>
-            {planning ? 'Планую…' : 'Скласти план дня'}
-          </button>
-        </div>
-      </div>
+      </section>
 
-      {(pending.data?.items.length ?? 0) > 0 && (
+      {pendingCount > 0 && (
         <section className="stack" style={{ gap: 12 }}>
-          <h2>Чекають підтвердження</h2>
+          <h2>
+            <span className="panel-tick" aria-hidden="true" />
+            Чекають підтвердження
+          </h2>
           <div className="pending-strip">
             {pending.data!.items.map((p) => (
               <ProposalCard key={p.id} p={p} projects={settings.data?.projects} onResolved={refresh} />
@@ -144,24 +212,29 @@ export function Day({ onChanged }: { onChanged: () => void }) {
 
       <div className="grid-2">
         <section className="card">
-          <div className="card-head">
-            <h2>Розклад</h2>
-            <span className="row" style={{ gap: 6 }}>
-              <span className="pill pill-work">робочий</span>
-              <span className="pill pill-personal">особистий</span>
-            </span>
-          </div>
+          <PanelHead
+            title="Розклад"
+            code={`${timed.length} подій`}
+            right={
+              <span className="row" style={{ gap: 6 }}>
+                <span className="pill pill-work">робочий</span>
+                <span className="pill pill-personal">особистий</span>
+              </span>
+            }
+          />
           <ErrorNote text={data.errors.calendar} />
           {data.events.length === 0 && !data.errors.calendar ? (
             <div className="empty">Подій немає — день вільний.</div>
           ) : (
             <ul className="timeline">
-              {data.events.map((e) => {
+              {data.events.map((e, i) => {
                 const past = !e.allDay && new Date(e.end).getTime() <= nowMs;
                 const now = !e.allDay && !past && new Date(e.start).getTime() <= nowMs;
                 const focus = e.title.startsWith('🎯');
                 return (
-                  <li key={e.id} className={past ? 'past' : now ? 'now' : undefined}>
+                  <Fragment key={e.id}>
+                  {showNowLine && i === nowIndex && <NowLine timeZone={data.timezone} />}
+                  <li className={past ? 'past' : now ? 'now' : undefined}>
                     <div className="when">
                       {e.allDay ? (
                         'весь день'
@@ -178,8 +251,10 @@ export function Day({ onChanged }: { onChanged: () => void }) {
                       {conflictIds.has(e.id) && <div className="conflict">накладка</div>}
                     </div>
                   </li>
+                  </Fragment>
                 );
               })}
+              {showNowLine && nowIndex === -1 && <NowLine timeZone={data.timezone} />}
             </ul>
           )}
         </section>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import { CoreScene, webglAvailable } from '../core/CoreScene';
 import { time } from '../format';
+import { DayDial } from '../hud';
 import { IconMic, IconSend } from '../icons';
 import { go, useHash } from '../router';
 import type { Proposal, Settings, Today } from '../types';
@@ -281,7 +282,11 @@ export function Core({ onChanged }: { onChanged: () => void }) {
 
       <aside className="core-hud core-hud-left">
         {/* the owner's time zone, not the browser's: the calendar and reports live there */}
-        <div className="hud-time">{now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: t?.timezone })}</div>
+        {t ? (
+          <DayDial events={t.events} date={t.date} timeZone={t.timezone} workday={settings.data ? { start: settings.data.workdayStart, end: settings.data.workdayEnd } : undefined} size={190} compact />
+        ) : (
+          <div className="hud-time">{now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</div>
+        )}
         <div className="hud-date">{now.toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long', timeZone: t?.timezone })}</div>
         <div className="hud-block">
           <div className="hud-label">Далі</div>

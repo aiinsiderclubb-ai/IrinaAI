@@ -3,6 +3,53 @@ import { money } from '../format';
 import { IconChevronL, IconChevronR } from '../icons';
 import type { CurrencyTotals, FinanceEntry } from '../types';
 import { ErrorNote, Loading, useLoad } from '../ui';
+import { CountUp } from '../hud';
+
+const PALETTE = ['var(--accent)', 'var(--violet)', 'var(--personal)', 'var(--ok)', 'var(--work)', 'var(--danger)', 'var(--warn)', 'var(--muted)'];
+
+/** spending split as a glowing ring: one arc per category, the total in the middle */
+function Donut({ cats, currency }: { cats: Array<[string, number]>; currency: string }) {
+  const total = cats.reduce((a, [, v]) => a + v, 0) || 1;
+  const r = 80;
+  const c = 2 * Math.PI * r;
+  let acc = 0;
+  return (
+    <div className="donut">
+      <svg viewBox="0 0 200 200" width={200} height={200} aria-hidden="true">
+        <circle cx={100} cy={100} r={r} fill="none" stroke="var(--line)" strokeWidth={18} />
+        <circle cx={100} cy={100} r={96} fill="none" stroke="var(--line)" strokeDasharray="1 5" />
+        {cats.map(([name, v], i) => {
+          const len = (v / total) * c;
+          const gap = cats.length > 1 ? Math.min(3, len / 3) : 0;
+          const seg = (
+            <circle
+              key={name}
+              className="donut-seg"
+              cx={100}
+              cy={100}
+              r={r}
+              stroke={PALETTE[i % PALETTE.length]}
+              strokeDasharray={`${Math.max(0.5, len - gap)} ${c}`}
+              strokeDashoffset={-acc}
+              transform="rotate(-90 100 100)"
+              style={{ filter: `drop-shadow(0 0 5px ${PALETTE[i % PALETTE.length]})` }}
+            >
+              <title>{`${name}: ${money(v, currency)}`}</title>
+            </circle>
+          );
+          acc += len;
+          return seg;
+        })}
+      </svg>
+      <div className="donut-center">
+        <div className="v">
+          <CountUp value={total} format={(n) => money(n, currency)} />
+        </div>
+        <div className="k">витрати</div>
+      </div>
+    </div>
+  );
+}
 
 const monthRange = (offset: number) => {
   const d = new Date();
@@ -27,6 +74,7 @@ export function Finance() {
     <div className="page">
       <div className="page-head">
         <div>
+          <div className="eyebrow">Облік · {scope === 'all' ? 'усе' : scope === 'personal' ? 'особисте' : 'проєкти'}</div>
           <h1>Фінанси</h1>
           <p>Записи з таблиці «Фінанси». Додавайте фразою асистенту: «мінус 45 доларів, таксі, особисте».</p>
         </div>
@@ -62,15 +110,21 @@ export function Finance() {
             <div className="stats">
               <div className="stat">
                 <div className="k">Витрати, {t.currency}</div>
-                <div className="v">{money(t.expense, t.currency)}</div>
+                <div className="v">
+                  <CountUp value={t.expense} format={(n) => money(n, t.currency)} />
+                </div>
               </div>
               <div className="stat">
                 <div className="k">Доходи, {t.currency}</div>
-                <div className="v">{money(t.income, t.currency)}</div>
+                <div className="v">
+                  <CountUp value={t.income} format={(n) => money(n, t.currency)} />
+                </div>
               </div>
               <div className="stat">
                 <div className="k">Баланс</div>
-                <div className={`v ${t.net < 0 ? 'neg' : t.net > 0 ? 'pos' : ''}`}>{money(t.net, t.currency)}</div>
+                <div className={`v ${t.net < 0 ? 'neg' : t.net > 0 ? 'pos' : ''}`}>
+                  <CountUp value={t.net} format={(n) => money(n, t.currency)} />
+                </div>
               </div>
             </div>
             {cats.length > 0 && (
@@ -79,16 +133,22 @@ export function Finance() {
                   <h2>Витрати за категоріями</h2>
                   <span className="count">{t.count} записів</span>
                 </div>
-                <div className="bars">
-                  {cats.map(([c, v]) => (
+                <div className="donut-wrap">
+                <Donut cats={cats} currency={t.currency} />
+                <div className="bars" style={{ padding: 0 }}>
+                  {cats.map(([c, v], i) => (
                     <div className="bar-row" key={c}>
-                      <span>{c}</span>
+                      <span>
+                        <i className="legend-dot" style={{ color: PALETTE[i % PALETTE.length] }} />
+                        {c}
+                      </span>
                       <div className="bar-track">
-                        <div className="bar-fill" style={{ width: `${Math.max(2, (v / max) * 100)}%` }} />
+                        <div className="bar-fill" style={{ width: `${Math.max(2, (v / max) * 100)}%`, background: PALETTE[i % PALETTE.length], boxShadow: `0 0 10px ${PALETTE[i % PALETTE.length]}` }} />
                       </div>
                       <span className="amt">{money(v, t.currency)}</span>
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
             )}
