@@ -14,7 +14,7 @@ import type { NotionRepo } from './notion/repo.js';
 import type { IntegrationStore } from './store/integrations.js';
 import type { MemoryStore } from './store/memory.js';
 import type { MessageStore } from './store/messages.js';
-import type { PendingStore } from './store/pending.js';
+import type { PendingAction, PendingStore } from './store/pending.js';
 import type { SettingsStore } from './store/settings.js';
 import type { TokenStore } from './store/tokens.js';
 
@@ -46,6 +46,11 @@ export interface Services {
   notify: (html: string) => Promise<void>;
   /** downloads a Telegram file by id */
   downloadFile?(fileId: string): Promise<Uint8Array>;
+  /** set by the bot: a Markdown message or a confirm card to a chat (background work reports through it) */
+  deliver?: {
+    text(chatId: number, md: string): Promise<void>;
+    card(chatId: number, p: PendingAction): Promise<void>;
+  };
 }
 
 export async function connectedAccounts(s: Services): Promise<Account[]> {

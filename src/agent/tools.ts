@@ -14,7 +14,8 @@ import { diffTotals, formatSocial, saveSnapshot, snapshotAround } from '../modul
 import type { SocialData } from '../integrations/social-types.js';
 import type { PendingAction } from '../store/pending.js';
 import { connectedAccounts, listAllEvents, type Services } from '../services.js';
-import { listSubPages, readSubPage } from '../notion/context.js';
+import { parentPage, projectTools } from './project-tools.js';
+import { jobTools } from './jobs.js';
 import { errMsg } from '../lib/log.js';
 
 export interface ToolContext {
@@ -43,9 +44,9 @@ const date = z.string().describe('Дата YYYY-MM-DD');
 const dateTime = z.string().describe('Локальний час YYYY-MM-DDTHH:mm (часовий пояс власника) або дата YYYY-MM-DD');
 
 const CALENDAR_KINDS = new Set<ActionKind>(['calendar.create', 'calendar.update', 'calendar.delete', 'plan.apply']);
-const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save', 'page.create']);
+const NOTION_KINDS = new Set<ActionKind>(['task.create', 'task.update', 'task.complete', 'task.reschedule', 'decision.log', 'waiting.add', 'waiting.resolve', 'finance.record', 'note.save', 'page.create', 'table.create', 'table.rows']);
 
-async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
+export async function propose<K extends ActionKind>(ctx: ToolContext, kind: K, payload: ActionPayloads[K], summary: string) {
   if (CALENDAR_KINDS.has(kind) && !(await calendarWritable(ctx.s))) {
     return {
       status: 'read_only',
@@ -527,63 +528,24 @@ export function buildTools(): Tool[] {
   });
 
   add({
-    name: 'notion_page_read',
-    description:
-      'Прочитати вкладену сторінку з Управлінського центру власниці в Notion (стратегія, план тижня, правила, дослідження) за назвою або її частиною. ' +
-      'Без назви — список доступних сторінок. Лише читання.',
-    schema: z.object({ title: z.string().optional().describe('Назва сторінки або її частина, напр. «Platform Strategy v3.0», «Weekly Plan»') }),
-    proposes: false,
-    async run(a, { s }) {
-      const st = await s.settings.get();
-      if (!s.notionApi || !st.notionContextPages.length) return { error: 'Сторінки власниці в Notion не підключені' };
-      const pages = await listSubPages(s.notionApi, st.notionContextPages);
-      const list = pages.map((p) => `${p.type === 'database' ? '🗂' : '📄'} ${p.title}`);
-      const q = a.title?.trim().toLowerCase();
-      if (!q) return { pages: list };
-      const hits = pages.filter((p) => p.type === 'page' && p.title.toLowerCase().includes(q));
-      if (!hits.length) return { error: `Сторінку «${a.title}» не знайдено`, pages: list };
-      // several pages share a title («Founder Working» ×3): read all of them, newest first is Notion's order
-      const out = [];
-      for (const h of hits.slice(0, 3)) out.push({ title: h.title, text: await readSubPage(s.notionApi, h.id) });
-      return { pages: out, note: hits.length > 3 ? `Ще ${hits.length - 3} сторінок з такою назвою` : undefined };
-    },
-  });
-
-  add({
     name: 'notion_page_create',
     description:
       'Підготувати НОВИЙ документ (сторінку) у Notion власниці: звіт, план, нотатки зустрічі, чек-лист. ' +
-      'Створюється всередині Управлінського центру або всередині його вкладеної сторінки (under). Наявні сторінки не змінюються. ' +
+      'Створюється на сторінці активного проєкту (якщо він є), інакше в Управлінському центрі; або всередині названої сторінки (under). Наявні сторінки не змінюються. ' +
       'content — Markdown: # заголовки, списки, - [ ] чек-лист, таблиці | a | b |, **жирний**. Пиши лише факти, які маєш; не вигадуй сум і дат.',
     schema: z.object({
       title: z.string().min(1).max(200),
       content: z.string().min(1).max(30000),
-      under: z.string().optional().describe('Назва вкладеної сторінки Управлінського центру, всередині якої створити документ; без неї — у самому центрі'),
+      under: z.string().optional().describe('Назва чи посилання сторінки, всередині якої створити документ; без неї — сторінка активного проєкту або центр'),
     }),
     proposes: true,
     async run(a, ctx) {
       const { s } = ctx;
-      const st = await s.settings.get();
-      if (!s.notionApi || !st.notionContextPages.length) return { error: 'Сторінки власниці в Notion не підключені' };
-      let parentId = st.notionContextPages[0]!;
-      let parentTitle = 'Управлінський центр';
-      if (a.under?.trim()) {
-        const q = a.under.trim().toLowerCase();
-        const pages = (await listSubPages(s.notionApi, st.notionContextPages)).filter((p) => p.type === 'page');
-        const hit = pages.find((p) => p.title.toLowerCase() === q) ?? pages.find((p) => p.title.toLowerCase().includes(q));
-        if (!hit) return { error: `Сторінку «${a.under}» не знайдено`, pages: pages.map((p) => p.title) };
-        parentId = hit.id;
-        parentTitle = hit.title;
-      } else {
-        try {
-          const page = await s.notionApi.request<any>('GET', `/v1/pages/${parentId}`);
-          const t = Object.values<any>(page.properties ?? {}).find((p) => p.type === 'title')?.title;
-          const name = (t ?? []).map((x: any) => x.plain_text ?? '').join('').trim();
-          if (name) parentTitle = name;
-        } catch {
-          /* the generic name is fine */
-        }
-      }
+      if (!s.notionApi) return { error: 'Notion не підключено' };
+      const parent = await parentPage(s, a.under);
+      if ('error' in parent) return { error: parent.error };
+      const parentId = parent.id;
+      const parentTitle = parent.title;
       const blocks = a.content.split('\n').filter((l) => l.trim()).length;
       return propose(ctx, 'page.create', { title: a.title.trim(), content: a.content, parentId, parentTitle }, `📄 Новий документ у Notion: «${a.title.trim()}»\nДе: «${parentTitle}» · ${blocks} рядків`);
     },
@@ -714,6 +676,7 @@ export function buildTools(): Tool[] {
     },
   });
 
+  tools.push(...projectTools(), ...jobTools());
   return tools;
 }
 

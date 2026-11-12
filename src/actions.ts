@@ -3,8 +3,11 @@ import type { Account } from './integrations/google-calendar.js';
 import { errMsg } from './lib/log.js';
 import { NotConnected, type Services } from './services.js';
 import { callWebhook, mcpCallTool } from './integrations/mcp.js';
-import { calendarWritable, notionAllows } from './integrations/runtime.js';
+import { calendarWritable, notionAccess, notionAllows } from './integrations/runtime.js';
 import { mdToBlocks } from './notion/blocks.js';
+import { readNotionDoc } from './notion/reader.js';
+import { applyUpsert, createTable, planUpsert, type ColumnSpec, type RowInput } from './notion/tables.js';
+import { projectsOf } from './projects/index.js';
 
 /**
  * Everything that changes the owner's data runs here, and only after the owner pressed "Підтвердити"
@@ -27,6 +30,8 @@ export interface ActionPayloads {
   'custom.mcp': { integrationId: string; tool: string; args: Record<string, unknown>; label: string };
   'note.save': { title: string; project?: string; source: string; text: string; file?: { fileId: string; name: string; mime: string } };
   'page.create': { title: string; content: string; parentId: string; parentTitle: string };
+  'table.create': { title: string; columns: ColumnSpec[]; parentId: string; parentTitle: string; projectId?: number; rows?: RowInput[] };
+  'table.rows': { tableId: string; tableTitle: string; rows: RowInput[]; projectId?: number };
 }
 
 export type ActionKind = keyof ActionPayloads;
@@ -153,6 +158,25 @@ export const EXECUTORS: Executors = {
     return `Документ створено в Notion: «${p.title}» (у «${p.parentTitle}»)${page.url ? `\n${page.url}` : ''}`;
   },
 
+  async 'table.create'(s, p) {
+    if (!s.notionApi) throw new NotConnected('Notion не підключено (Опції → Підключення)');
+    const t = await createTable(s.notionApi, p.parentId, p.title, p.columns);
+    const filled = p.rows?.length ? await applyUpsert(s.notionApi, t.id, p.rows) : undefined;
+    if (p.projectId) await rememberTable(s, p.projectId, t.id);
+    return `Таблицю «${p.title}» створено в «${p.parentTitle}»${filled ? `, рядків: ${filled.created}` : ''}.${t.url ? `\n${t.url}` : ''}`;
+  },
+
+  async 'table.rows'(s, p) {
+    if (!s.notionApi) throw new NotConnected('Notion не підключено (Опції → Підключення)');
+    if ((await notionAccess(s)) !== 'full' && (await planUpsert(s.notionApi, p.tableId, p.rows)).updates.length) {
+      throw new Error('у Notion дозволено лише додавати нове — наявні рядки не змінюю (Опції → Підключення → Notion)');
+    }
+    const r = await applyUpsert(s.notionApi, p.tableId, p.rows);
+    if (p.projectId) await rememberTable(s, p.projectId, p.tableId);
+    const parts = [r.created ? `додано ${r.created}` : '', r.updated ? `оновлено ${r.updated}` : ''].filter(Boolean).join(', ');
+    return `Таблиця «${p.tableTitle}»: ${parts || 'без змін'}.${r.skipped.length ? ` Не записано (невірний формат): ${r.skipped.slice(0, 5).join('; ')}.` : ''}${r.url ? `\n${r.url}` : ''}`;
+  },
+
   async 'note.save'(s, p) {
     const notion = await s.notion();
     let file: { data: Uint8Array; name: string; mime: string } | undefined;
@@ -171,6 +195,16 @@ export const EXECUTORS: Executors = {
     return `Збережено в «Матеріали»${p.project ? ` → ${p.project}` : ''}: «${p.title}».${fileNote}`;
   },
 };
+
+/** A table the assistant created or filled becomes a project material, so it is found and read later. */
+async function rememberTable(s: Services, projectId: number, tableId: string): Promise<void> {
+  try {
+    const d = await readNotionDoc(s.notionApi!, tableId, { database: true });
+    await projectsOf(s).addMaterial({ projectId, kind: 'notion_db', title: d.title, source: d.id, text: d.text, meta: { url: d.url } });
+  } catch (e) {
+    s.log.warn('table_material_failed', { error: errMsg(e).slice(0, 200) });
+  }
+}
 
 /** Confirm button: claim once (a double tap can't run it twice), execute, record the result. */
 /** `claimed: false` = someone already handled it (double tap / other device): nothing ran. */

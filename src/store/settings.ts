@@ -39,6 +39,8 @@ export interface Settings {
   eventsTime: string;
   /** owner's Notion pages read into the prompt (read-only), e.g. «Управлінський центр» */
   notionContextPages: string[];
+  /** the project the conversation is about (see ProjectStore): its card and materials go into the prompt */
+  activeProjectId?: number;
   notion?: NotionSchema;
 }
 

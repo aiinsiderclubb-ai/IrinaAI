@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { go, useHash } from './router';
 import { api, UNAUTHORIZED } from './api';
-import { IconMoney, IconMoon, IconOrb, IconSettings, IconSun, IconTasks, IconToday } from './icons';
+import { IconFolder, IconMoney, IconMoon, IconOrb, IconSettings, IconSun, IconTasks, IconToday } from './icons';
 import { useTheme } from './theme';
 import { Finance } from './screens/Finance';
 import { Login } from './screens/Login';
 import { SettingsScreen } from './screens/Settings';
 import { Tasks } from './screens/Tasks';
+import { Projects } from './screens/Projects';
 import { Day } from './screens/Day';
 // three.js is heavy: load the core only when it is opened
 const Core = lazy(() => import('./screens/Core').then((m) => ({ default: m.Core })));
@@ -19,6 +20,7 @@ const ROUTES = [
   { path: 'core', label: 'Ядро', icon: IconOrb },
   { path: 'day', label: 'День', icon: IconToday },
   { path: 'tasks', label: 'Задачі', icon: IconTasks },
+  { path: 'projects', label: 'Проєкти', icon: IconFolder },
   { path: 'finance', label: 'Фінанси', icon: IconMoney },
   { path: 'settings', label: 'Опції', icon: IconSettings },
 ] as const;
@@ -102,6 +104,7 @@ export function App() {
           )}
           {current === 'day' && <Day onChanged={refreshPending} />}
           {current === 'tasks' && <Tasks />}
+          {current === 'projects' && <Projects />}
           {current === 'finance' && <Finance />}
           {current === 'settings' && <SettingsScreen onLogout={() => setAuth({ ...auth, ok: false })} />}
         </main>

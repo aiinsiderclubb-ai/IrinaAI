@@ -10,6 +10,7 @@ import { runNudges } from './modules/nudges.js';
 import { digestDay } from './modules/digest.js';
 import { buildEveningReport, buildMorningReport } from './modules/reports.js';
 import { saveSnapshot } from './modules/social.js';
+import { refreshProjects } from './projects/sync.js';
 import { connectedAccounts, esc, type Services } from './services.js';
 import type { Settings } from './store/settings.js';
 
@@ -55,6 +56,12 @@ async function finishJob(db: Db, job: string, period: string, error?: string): P
 
 export function buildJobs(): Job[] {
   return [
+    {
+      // project folders: re-read Notion pages that changed (one cheap request per page when nothing did)
+      name: 'project_refresh',
+      due: (now) => now.toFormat("yyyy-LL-dd'T'HH"),
+      run: (s) => refreshProjects(s),
+    },
     {
       name: 'morning_report',
       due: daily((st) => st.morningTime, 2),

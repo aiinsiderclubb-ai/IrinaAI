@@ -37,6 +37,23 @@ export class ScriptedLlm implements Llm {
     this.searchPrompts.push(prompt);
     return { text: this.searchAnswer, sources: this.searchSources };
   }
+  /** bag of words hashed into 64 numbers: texts sharing words are close */
+  async embed(texts: string[]): Promise<number[][]> {
+    return texts.map((t) => {
+      const v = new Array(64).fill(0);
+      for (const w of t.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []) {
+        let h = 0;
+        for (const ch of w.slice(0, 6)) h = (h * 31 + ch.charCodeAt(0)) % 64;
+        v[h] += 1;
+      }
+      return v;
+    });
+  }
+  seen: string[] = [];
+  async see(file: { name: string }, _prompt: string): Promise<string> {
+    this.seen.push(file.name);
+    return `Опис зображення ${file.name}`;
+  }
 }
 
 export const toolCall = (name: string, args: unknown, id = `call-${name}`) => ({ content: null, toolCalls: [{ id, name, arguments: JSON.stringify(args) }] });

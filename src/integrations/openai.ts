@@ -55,6 +55,10 @@ export interface Llm {
   /** `prompt` biases recognition (names, short answers like «так») */
   transcribe(audio: Uint8Array, filename: string, mime: string, language?: string, prompt?: string, model?: string): Promise<string>;
   webSearch(prompt: string): Promise<WebAnswer>;
+  /** vectors for search by meaning (absent: keyword search only) */
+  embed?(texts: string[]): Promise<number[][]>;
+  /** reads an image or a PDF (scans) and answers `prompt` about it */
+  see?(file: { data: Uint8Array; mime: string; name: string }, prompt: string): Promise<string>;
 }
 
 /** what a web search returns: the model's answer and the pages it cited */
@@ -64,6 +68,8 @@ export interface WebAnswer {
 }
 
 const BASE = 'https://api.openai.com/v1';
+/** embedding size: text-embedding-3-small shortened to 512 numbers is plenty for project materials */
+export const EMBED_DIMS = 512;
 
 /** OpenAI tags cited links with ?utm_source=openai; the owner gets the plain link */
 export function cleanUrl(raw: string): string {
@@ -79,7 +85,7 @@ export function cleanUrl(raw: string): string {
 export class OpenAi implements Llm {
   constructor(
     private apiKey: string,
-    private models: { chat: string; transcribe: string; search: string },
+    private models: { chat: string; transcribe: string; search: string; embed?: string },
     /** reasoning effort for models that think (gpt-5.x, gpt-6.x, o-series) */
     private reasoningEffort: 'minimal' | 'low' | 'medium' | 'high' = 'low',
   ) {}
@@ -281,6 +287,45 @@ export class OpenAi implements Llm {
       timeoutMs: 120_000,
     });
     return res.text.trim();
+  }
+
+  async embed(texts: string[]): Promise<number[][]> {
+    const model = this.models.embed ?? 'text-embedding-3-small';
+    const out: number[][] = [];
+    for (let i = 0; i < texts.length; i += 96) {
+      const t0 = Date.now();
+      const res = await httpJson<any>(`${BASE}/embeddings`, {
+        method: 'POST',
+        headers: this.headers,
+        json: { model, input: texts.slice(i, i + 96).map((t) => t.slice(0, 24_000) || ' '), dimensions: EMBED_DIMS },
+        timeoutMs: 60_000,
+      });
+      this.track(model, res.usage, Date.now() - t0);
+      for (const d of [...(res.data ?? [])].sort((a: any, b: any) => a.index - b.index)) out.push(d.embedding);
+    }
+    return out;
+  }
+
+  /** Vision: an image or a PDF goes to the chat model with a question about it. */
+  async see(file: { data: Uint8Array; mime: string; name: string }, prompt: string): Promise<string> {
+    const b64 = Buffer.from(file.data).toString('base64');
+    const part = file.mime.startsWith('image/')
+      ? { type: 'input_image', image_url: `data:${file.mime};base64,${b64}` }
+      : { type: 'input_file', filename: file.name, file_data: `data:${file.mime};base64,${b64}` };
+    const model = this.models.chat;
+    const t0 = Date.now();
+    const res = await httpJson<any>(`${BASE}/responses`, {
+      method: 'POST',
+      headers: this.headers,
+      json: { model, store: false, input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, part] }] },
+      timeoutMs: 180_000,
+    });
+    this.track(model, res.usage, Date.now() - t0);
+    return (res.output ?? [])
+      .filter((o: any) => o.type === 'message')
+      .flatMap((o: any) => (o.content ?? []).filter((c: any) => c.type === 'output_text').map((c: any) => c.text))
+      .join('')
+      .trim();
   }
 
   /** Responses API with the built-in web search tool. Returns the model's text answer. */

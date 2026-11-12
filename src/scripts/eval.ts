@@ -162,6 +162,12 @@ class RecordingLlm implements Llm {
   webSearch(p: string) {
     return this.inner.webSearch(p);
   }
+  embed(t: string[]) {
+    return this.inner.embed!(t);
+  }
+  see(f: { data: Uint8Array; mime: string; name: string }, p: string) {
+    return this.inner.see!(f, p);
+  }
 }
 
 function dates(): Dates {

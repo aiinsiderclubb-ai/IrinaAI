@@ -8,8 +8,9 @@ import { buildToday } from '../modules/dashboard.js';
 import { readPagesText } from '../notion/context.js';
 import { ELEVEN_VOICES, OPENAI_VOICES, ttsProvider } from '../integrations/tts.js';
 import { buildTools, customTools, toolSpecs, type Tool, type ToolContext } from './tools.js';
+import { projectPrompt, relevantSnippets } from './project-tools.js';
 
-const MAX_STEPS = 6;
+const MAX_STEPS = 10;
 
 export interface AgentReply {
   text: string;
@@ -181,11 +182,18 @@ export async function buildSystemPrompt(s: Services, mode: 'text' | 'voice' = 't
           '11. ГОЛОС. Ти вмієш відповідати голосовими в Telegram: на голосове повідомлення відповідь іде голосом сама. Якщо текстом просять відповісти голосом — виклич reply_voice і відповідай коротко. Ніколи не кажи, що можеш лише текстом. Попросять завжди відповідати голосом — settings_set voice_replies=always.',
         ]
       : []),
-    `Проєкти: ${st.projects.length ? st.projects.join(', ') : 'не задано'}.`,
+    '12. ФАЙЛИ Й ПОСИЛАННЯ. Файли, які надсилає власниця (PDF, Word, Excel, PowerPoint, фото, скриншоти), приходять тобі текстом прямо в повідомленні — читай їх повністю й працюй з ними; ніколи не кажи, що файлу не бачиш, якщо його текст є. ' +
+      'Посилання на сайти відкривай web_open, на Notion — notion_page_read (вона читає й усі підсторінки). Якщо Notion не пускає до сторінки (no_access) — дослівно поясни, як дати доступ.',
+    '13. ПРОЄКТИ. Посилання на сторінку проєкту в Notion з проханням «працюй з цим проєктом / ось новий проєкт» — project_create. Розмова про інший проєкт — project_switch. ' +
+      'Великі доручення (знайти й порівняти виробників, перевірити десятки сайтів, зібрати таблицю) — background_start з повним формулюванням доручення, а не кроками в чаті.',
+    '14. ЛИСТИ ВІД ВИРОБНИКІВ ЧИ ПАРТНЕРІВ. Коли власниця пересилає чи вставляє відповідь — знайди рядок у таблиці проєкту (notion_table_read) і підготуй ОДНУ пачку notion_table_rows: ціни, умови, мінімальна партія, терміни, новий статус, відкриті питання. ' +
+      'Окремо коротко напиши, що з цього потребує її рішення.',
+    `Проєкти для задач і фінансів у Notion: ${st.projects.length ? st.projects.join(', ') : 'не задано'}.`,
     `Категорії витрат: ${st.categories.expense.join(', ') || 'будь-які'}; доходів: ${st.categories.income.join(', ') || 'будь-які'}. Валюта обліку: ${st.currency}.`,
     context ? `КОНТЕКСТ ВЛАСНИКА З NOTION (лише читання; правила й пріоритети — враховуй у порадах і формулюваннях, не змінюй). Вкладені сторінки (📄) відкривай інструментом notion_page_read, коли питання про їхній зміст. Новий документ (звіт, план, нотатки) створюй інструментом notion_page_create — наявні сторінки не змінюй:\n${context}` : '',
     notes.length ? `ЩО ТИ ПАМ’ЯТАЄШ:\n${notes.map((m) => `- ${m.subject}: ${m.content}`).join('\n')}` : 'ПАМ’ЯТЬ поки порожня.',
     digests.length ? `ПІДСУМКИ ПОПЕРЕДНІХ РОЗМОВ (від давніших до свіжих):\n${digests.map((m) => `- ${m.subject}: ${m.content}`).join('\n')}` : '',
+    await projectPrompt(s).catch(() => ''),
     await sourcesLine(s),
     `Зараз: ${now.toFormat("cccc, yyyy-LL-dd HH:mm")} (${st.timezone}). Відносні дати («завтра», «у п’ятницю») перетворюй у конкретні самостійно.`,
     await todayBrief(s),
@@ -212,15 +220,19 @@ export class Agent {
   }
 
   /** `onText` streams the final answer as it is generated (used to start speaking before it is complete). */
-  async handle(chatId: number, userText: string, onText?: (delta: string) => void): Promise<AgentReply> {
+  /** `historyText`: what to keep in the chat history instead of a huge message (a file's full text stays in materials). */
+  async handle(chatId: number, userText: string, onText?: (delta: string) => void, opts: { historyText?: string } = {}): Promise<AgentReply> {
     const { s } = this;
     // the last two days verbatim; older context comes from the daily digests in the prompt
     const history = await s.messages.recent(chatId, 20, 48);
-    await s.messages.add(chatId, 'user', userText);
+    await s.messages.add(chatId, 'user', opts.historyText ?? userText);
 
+    // pieces of the active project's materials that match the message: the model starts with them at hand
+    const snippets = this.mode === 'text' ? await relevantSnippets(s, userText) : '';
     const messages: LlmMessage[] = [
       { role: 'system', content: await buildSystemPrompt(s, this.mode) },
       ...history.map((m): LlmMessage => (m.role === 'user' ? { role: 'user', content: m.content } : { role: 'assistant', content: m.content })),
+      ...(snippets ? [{ role: 'system' as const, content: snippets }] : []),
       { role: 'user', content: userText },
     ];
     const ctx: ToolContext = { s, chatId, proposals: [], lastUserText: this.mode === 'voice' ? userText : undefined };

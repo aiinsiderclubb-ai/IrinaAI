@@ -177,9 +177,9 @@ describe('agent loop safety', () => {
 
   it('stops after the step limit', async () => {
     const env = await makeEnv();
-    for (let i = 0; i < 10; i++) env.llm.script.push(toolCall('projects_list', {}, `c${i}`));
+    for (let i = 0; i < 14; i++) env.llm.script.push(toolCall('projects_list', {}, `c${i}`));
     const reply = await new Agent(env.s).handle(42, 'loop');
-    expect(env.llm.calls.length).toBeLessThanOrEqual(6);
+    expect(env.llm.calls.length).toBeLessThanOrEqual(10);
     expect(reply.text).toContain('Не вдалося');
   });
 

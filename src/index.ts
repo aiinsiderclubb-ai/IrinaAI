@@ -5,6 +5,7 @@ import { loadConfig } from './config.js';
 import { createPgDb, migrate } from './db/index.js';
 import { log } from './lib/log.js';
 import { startScheduler } from './scheduler.js';
+import { recoverJobs } from './agent/jobs.js';
 import { buildServer } from './server.js';
 import { createBot } from './telegram/bot.js';
 import { registerWeb } from './web/api.js';
@@ -38,6 +39,8 @@ if (cfg.TELEGRAM_MODE === 'webhook') {
 }
 
 const stopScheduler = startScheduler(services);
+// background jobs do not survive a restart: tell the owner which one stopped
+void recoverJobs(services).catch((e) => log.warn('recover_jobs_failed', { error: String(e).slice(0, 200) }));
 
 // keep a free Render instance awake: inbound traffic through the public URL counts, localhost does not
 let keepalive: NodeJS.Timeout | undefined;

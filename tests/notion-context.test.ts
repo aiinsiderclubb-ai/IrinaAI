@@ -36,12 +36,13 @@ describe('owner context pages', () => {
     clearContextCache();
     const api = fakeApi();
     const ctx = await readPagesText(api as never, ['center']);
-    expect(ctx).toContain('📄 Вкладена сторінка: «MLI · Platform Strategy v3.0 · Founder Working»');
-    expect(ctx).toContain('🗂 Вкладена база: «MLI · Завдання та контроль»');
+    expect(ctx).toContain('📄 Підсторінка «MLI · Platform Strategy v3.0 · Founder Working»');
+    expect(ctx).toContain('🗂 Таблиця «MLI · Завдання та контроль»');
     expect(ctx).toContain('Прихований абзац у тогглі');
     expect((await listSubPages(api as never, ['center'])).map((p) => p.type)).toEqual(['page', 'page', 'database']);
     expect(await readSubPage(api as never, 'p-week')).toBe('- [x] Зустріч з маркетологинею');
-    expect(api.calls.every((c) => c.startsWith('GET '))).toBe(true);
+    // read-only: GETs, plus database queries (POST …/query is a read in Notion's API)
+    expect(api.calls.every((c) => c.startsWith('GET ') || /^POST \/v1\/databases\/[^/]+\/query$/.test(c))).toBe(true);
   });
 
   it('the agent tool reads a sub-page by part of its title and lists pages otherwise', async () => {
@@ -49,8 +50,10 @@ describe('owner context pages', () => {
     env.s.notionApi = fakeApi() as never;
     const tool = buildTools().find((t) => t.name === 'notion_page_read')!;
     const ctx = { s: env.s, chatId: 1, proposals: [] };
-    expect(await tool.run({ title: 'strategy v3' }, ctx)).toMatchObject({ pages: [{ title: 'MLI · Platform Strategy v3.0 · Founder Working', text: 'P1: стратегія екосистеми MLI' }] });
-    expect(((await tool.run({}, ctx)) as any).pages).toHaveLength(3);
+    const read = (await tool.run({ title: 'strategy v3' }, ctx)) as any;
+    expect(read.title).toBe('MLI · Platform Strategy v3.0 · Founder Working');
+    expect(read.text).toContain('P1: стратегія екосистеми MLI');
+    expect(((await tool.run({}, ctx)) as any).pages.center_pages).toHaveLength(3);
     expect(await tool.run({ title: 'бюджет' }, ctx)).toMatchObject({ error: 'Сторінку «бюджет» не знайдено' });
   });
 });

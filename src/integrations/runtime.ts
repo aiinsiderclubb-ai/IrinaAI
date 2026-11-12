@@ -27,7 +27,7 @@ export async function applyIntegrations(s: Services): Promise<void> {
   const base = baseUrl(cfg);
 
   const openaiKey = ic.openai?.apiKey || cfg.OPENAI_API_KEY;
-  if (s.llm instanceof OpenAi || !s.llm) s.llm = new OpenAi(openaiKey, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }, cfg.OPENAI_REASONING_EFFORT);
+  if (s.llm instanceof OpenAi || !s.llm) s.llm = new OpenAi(openaiKey, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL, embed: cfg.OPENAI_EMBED_MODEL }, cfg.OPENAI_REASONING_EFFORT);
 
   const g = { id: ic.google?.clientId || cfg.GOOGLE_CLIENT_ID, secret: ic.google?.clientSecret || cfg.GOOGLE_CLIENT_SECRET };
   s.googleAuth = g.id && g.secret ? new GoogleAuth({ clientId: g.id, clientSecret: g.secret, redirectUri: `${base}/oauth/google/callback` }, s.tokens, s.clock) : undefined;
@@ -80,7 +80,7 @@ export async function notionAccess(s: Services): Promise<NotionAccess> {
 }
 
 /** What `create` mode allows: adding new things. Nothing that already exists is changed, closed or moved. */
-export const NOTION_CREATE_KINDS = new Set(['task.create', 'decision.log', 'waiting.add', 'finance.record', 'note.save', 'page.create']);
+export const NOTION_CREATE_KINDS = new Set(['task.create', 'decision.log', 'waiting.add', 'finance.record', 'note.save', 'page.create', 'table.create', 'table.rows']);
 
 export async function notionAllows(s: Services, kind: string): Promise<boolean> {
   const access = await notionAccess(s);

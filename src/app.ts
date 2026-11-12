@@ -27,7 +27,7 @@ export async function createServices(cfg: Config, db: Db): Promise<Services> {
     messages: new MessageStore(db),
     memory: new MemoryStore(db),
     integrations: new IntegrationStore(db, cfg.ENCRYPTION_KEY),
-    llm: new OpenAi(cfg.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL }, cfg.OPENAI_REASONING_EFFORT),
+    llm: new OpenAi(cfg.OPENAI_API_KEY, { chat: cfg.OPENAI_MODEL, transcribe: cfg.OPENAI_TRANSCRIBE_MODEL, search: cfg.OPENAI_SEARCH_MODEL, embed: cfg.OPENAI_EMBED_MODEL }, cfg.OPENAI_REASONING_EFFORT),
     notion: async () => {
       throw new Error('integrations not applied');
     },

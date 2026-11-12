@@ -14,6 +14,7 @@ export const IconMic = P('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5
 export const IconSend = P('M5 12h14M13 6l6 6-6 6');
 export const IconCheck = P('M5 12.5l4.5 4.5L19 7');
 export const IconPlus = P('M12 5v14M5 12h14');
+export const IconFolder = P('M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z');
 export const IconChevronL = P('M15 6l-6 6 6 6');
 export const IconChevronR = P('M9 6l6 6-6 6');
 export const IconLogo = P('M6 19l6-14 6 14M8.5 14h7');

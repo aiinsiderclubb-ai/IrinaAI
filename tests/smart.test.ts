@@ -48,7 +48,7 @@ describe('owner context from Notion (read-only)', () => {
     expect(prompt).toContain('КОНТЕКСТ ВЛАСНИКА З NOTION');
     expect(prompt).toContain('- Статус «Завершено» лише після підтвердженого результату');
     await buildSystemPrompt(env.s);
-    expect(methods).toEqual(['GET /v1/blocks/page-1/children']); // cached, and never anything but GET
+    expect(methods).toEqual(['GET /v1/pages/page-1', 'GET /v1/blocks/page-1/children']); // cached, and never anything but GET
     expect(await readPagesText(env.s.notionApi!, [])).toBe('');
   });
 });

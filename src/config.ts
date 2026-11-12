@@ -26,6 +26,7 @@ const schema = z.object({
   OPENAI_MODEL: z.string().default('gpt-4.1'),
   OPENAI_TRANSCRIBE_MODEL: z.string().default('gpt-4o-transcribe'),
   OPENAI_SEARCH_MODEL: z.string().default('gpt-4.1'),
+  OPENAI_EMBED_MODEL: z.string().default('text-embedding-3-small'),
   /** thinking depth for gpt-5.x / gpt-6.x / o-series models */
   OPENAI_REASONING_EFFORT: z.enum(['minimal', 'low', 'medium', 'high']).default('low'),
   /** spoken conversation: a faster model and transcription, latency matters more than nuance */

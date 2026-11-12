@@ -12,6 +12,11 @@ import { classifyImport } from '../modules/importer.js';
 import { buildEveningReport, buildMorningReport } from '../modules/reports.js';
 import { toOggOpus, plainForSpeech } from '../integrations/tts.js';
 import { esc, type Services } from '../services.js';
+import { createProject } from '../agent/project-tools.js';
+import { UnsupportedFile } from '../files/extract.js';
+import { findNotionLinks } from '../notion/reader.js';
+import { activeProject, projectsOf } from '../projects/index.js';
+import { fileToText } from '../projects/sync.js';
 import type { PendingAction } from '../store/pending.js';
 import { TelegramAccess } from '../store/telegram-access.js';
 
@@ -30,7 +35,20 @@ export function preview(text: string, max: number): string {
   const cut = head.lastIndexOf(' ');
   return `${(cut > max * 0.6 ? head.slice(0, cut) : head).trimEnd()}… (ще ${chars.length - max} символів)`;
 }
-const TEXT_FILE = /\.(txt|md|csv|json|log|html?)$/i;
+/** a file's text goes into the turn up to this size (the whole of it stays in the project materials) */
+const INLINE_FILES_CHARS = 24_000;
+/** a pasted message this long is kept as a project material */
+const LONG_MESSAGE = 1200;
+/** files sent together (an album) arrive one by one: wait this long for the rest */
+const ALBUM_WAIT_MS = 1500;
+
+interface IncomingFile {
+  fileId: string;
+  uniqueId: string;
+  name: string;
+  mime?: string;
+  size?: number;
+}
 
 /** Splits on paragraph boundaries so HTML tags of one section stay together. */
 export function chunk(text: string, limit = TG_LIMIT): string[] {
@@ -50,6 +68,15 @@ export function chunk(text: string, limit = TG_LIMIT): string[] {
   }
   if (cur) out.push(cur);
   return out;
+}
+
+/** Who wrote a forwarded message, as Telegram tells it. */
+function forwardName(o: any): string {
+  if (!o) return '';
+  if (o.type === 'user') return [o.sender_user?.first_name, o.sender_user?.last_name].filter(Boolean).join(' ');
+  if (o.type === 'hidden_user') return o.sender_user_name ?? '';
+  if (o.type === 'chat' || o.type === 'channel') return o.sender_chat?.title ?? o.chat?.title ?? '';
+  return '';
 }
 
 export function confirmKeyboard(id: string): InlineKeyboard {
@@ -170,6 +197,14 @@ export function createBot(s: Services, agent: Agent): Bot {
     }
   }
 
+  // background work (project reading, long jobs) reports through these
+  s.deliver = {
+    text: async (chatId, md) => {
+      for (const part of chunk(md)) await sendRich(chatId, part);
+    },
+    card: (chatId, p) => sendCard(chatId, p),
+  };
+
   async function deliver(chatId: number, reply: AgentReply, viaVoice: boolean): Promise<void> {
     const { voiceReplies } = await s.settings.get();
     // an explicit request ("say it by voice") wins over the mode; cards then follow the voice message
@@ -183,10 +218,10 @@ export function createBot(s: Services, agent: Agent): Bot {
     for (const p of reply.proposals) await sendCard(chatId, p);
   }
 
-  async function ask(chatId: number, text: string, viaVoice: boolean): Promise<void> {
+  async function ask(chatId: number, text: string, viaVoice: boolean, historyText?: string): Promise<void> {
     const stop = keepTyping(chatId);
     try {
-      const reply = await agent.handle(chatId, text);
+      const reply = await agent.handle(chatId, text, undefined, historyText ? { historyText } : {});
       await deliver(chatId, reply, viaVoice);
     } finally {
       stop();
@@ -215,11 +250,11 @@ export function createBot(s: Services, agent: Agent): Bot {
   bot.command('start', (ctx) =>
     ctx.reply(
       'Привіт! Я ваш персональний асистент. Пишіть або надсилайте голосові: задачі, календар, фінанси, звіти.\n\n' +
-        '/connect — підключити Google та Instagram\n/web — увійти у веб-кабінет\n/status — стан підключень\n/morning, /evening — звіти зараз\n/plan — план дня\n/metrics — Instagram і YouTube\n/events — підбірка подій\n/voice — режим голосових відповідей\n\n' +
+        '/project — проєкти: перемкнути чи додати новий за посиланням Notion\n/connect — підключити Google та Instagram\n/web — увійти у веб-кабінет\n/status — стан підключень\n/morning, /evening — звіти зараз\n/plan — план дня\n/metrics — Instagram і YouTube\n/events — підбірка подій\n/voice — режим голосових відповідей\n\n' +
         'Перешліть сюди відповідь ChatGPT/Dot або файл — розкладу за проєктами.',
     ),
   );
-  bot.command('help', (ctx) => ctx.reply('Просто напишіть, що потрібно, голосом або текстом. Команди: /web /connect /status /morning /evening /plan /metrics /events /voice'));
+  bot.command('help', (ctx) => ctx.reply('Просто напишіть, що потрібно, голосом або текстом. Файли (PDF, Word, Excel, PowerPoint, фото) і посилання можна надсилати прямо в чат. Команди: /project /web /connect /status /morning /evening /plan /metrics /events /voice'));
 
   bot.command('connect', async (ctx) => {
     const kb = new InlineKeyboard();
@@ -305,33 +340,157 @@ export function createBot(s: Services, agent: Agent): Bot {
     return hearAndAnswer(ctx.chat.id, a, `audio.${ext}`);
   });
 
-  bot.on('message:document', async (ctx) => {
-    const d = ctx.message.document;
-    if (d.file_size && d.file_size > MAX_FILE_BYTES) return void (await ctx.reply('Файл більший за 20 МБ — Telegram не дає його завантажити боту.'));
-    const name = d.file_name ?? 'file';
-    let text = ctx.message.caption ?? '';
-    if (TEXT_FILE.test(name) && (d.file_size ?? 0) <= 300_000) {
-      const data = await s.downloadFile!(d.file_id);
-      text = `${text}\n${new TextDecoder().decode(data)}`.trim().slice(0, 60_000);
+  // ---------- files and photos: read, keep in the project, hand to the assistant ----------
+
+  /** Reads the files, saves each as a material of the active project, then asks the assistant with their text. */
+  async function receiveFiles(chatId: number, files: IncomingFile[], caption: string): Promise<void> {
+    const stop = keepTyping(chatId);
+    try {
+      const project = await activeProject(s);
+      const parts: string[] = [];
+      const short: string[] = [];
+      const budget = Math.floor(INLINE_FILES_CHARS / files.length);
+      for (const f of files) {
+        if (f.size && f.size > MAX_FILE_BYTES) {
+          parts.push(`[Файл «${f.name}» більший за 20 МБ — Telegram не дає боту його завантажити. Попроси надіслати менший файл або посилання.]`);
+          continue;
+        }
+        try {
+          const data = await s.downloadFile!(f.fileId);
+          const { text, links } = await fileToText(s, data, f.name, f.mime);
+          if (!text.trim()) {
+            parts.push(`[Файл «${f.name}»: тексту в ньому не знайдено]`);
+            continue;
+          }
+          const { material } = await projectsOf(s).addMaterial({
+            projectId: project?.id,
+            kind: 'file',
+            title: f.name,
+            source: `tg:${f.uniqueId}`,
+            text,
+            meta: { links: links.slice(0, 100), mime: f.mime },
+          });
+          const where = `збережено в матеріали${project ? ` проєкту «${project.name}»` : ''} як #${material.id}, ${text.length} знаків`;
+          const body = text.length <= budget ? text : `${text.slice(0, budget)}\n…(далі ще ${text.length - budget} знаків — material_read(${material.id}, part=2))`;
+          const linkLine = links.length ? `\nПосилання у файлі (${links.length}): ${links.slice(0, 40).join(' ')}` : '';
+          parts.push(`[Файл «${f.name}» — ${where}]\n${body}${linkLine}`);
+          short.push(`[Файл «${f.name}» — матеріал #${material.id}, ${text.length} знаків]\n${text.slice(0, 800)}${text.length > 800 ? '…' : ''}`);
+        } catch (e) {
+          parts.push(`[Файл «${f.name}»: ${e instanceof UnsupportedFile ? e.message : `не вдалося прочитати (${errMsg(e).slice(0, 150)})`}]`);
+        }
+      }
+      const head = caption.trim() || (files.length > 1 ? 'Надсилаю файли.' : 'Надсилаю файл.');
+      const reply = await agent.handle(chatId, [head, ...parts].join('\n\n'), undefined, { historyText: [head, ...(short.length ? short : parts)].join('\n\n') });
+      await deliver(chatId, reply, false);
+    } finally {
+      stop();
     }
-    await startImport(ctx.chat.id, { text: text || `Файл ${name}`, hint: name, file: { fileId: d.file_id, name, mime: d.mime_type ?? 'application/octet-stream' } });
+  }
+
+  // an album arrives as separate messages with one media_group_id: answer once for all of them
+  const albums = new Map<string, { chatId: number; files: IncomingFile[]; caption: string; timer: ReturnType<typeof setTimeout> }>();
+  function queueFile(chatId: number, file: IncomingFile, caption: string | undefined, group: string | undefined): void {
+    if (!group) return void receiveFiles(chatId, [file], caption ?? '').catch((e) => s.log.error('files_failed', { error: errMsg(e).slice(0, 200) }));
+    const a = albums.get(group) ?? { chatId, files: [], caption: '', timer: setTimeout(() => {}, 0) };
+    clearTimeout(a.timer);
+    a.files.push(file);
+    if (caption) a.caption = a.caption ? `${a.caption}\n${caption}` : caption;
+    a.timer = setTimeout(() => {
+      albums.delete(group);
+      void receiveFiles(a.chatId, a.files, a.caption).catch((e) => s.log.error('files_failed', { error: errMsg(e).slice(0, 200) }));
+    }, ALBUM_WAIT_MS);
+    albums.set(group, a);
+  }
+
+  bot.on('message:document', (ctx) => {
+    const d = ctx.message.document;
+    queueFile(ctx.chat.id, { fileId: d.file_id, uniqueId: d.file_unique_id, name: d.file_name ?? 'file', mime: d.mime_type, size: d.file_size }, ctx.message.caption, ctx.message.media_group_id);
   });
+
+  bot.on('message:photo', (ctx) => {
+    const ph = ctx.message.photo.at(-1)!; // the largest size
+    queueFile(ctx.chat.id, { fileId: ph.file_id, uniqueId: ph.file_unique_id, name: `фото-${ph.file_unique_id.slice(-6)}.jpg`, mime: 'image/jpeg', size: ph.file_size }, ctx.message.caption, ctx.message.media_group_id);
+  });
+
+  // ---------- projects ----------
+
+  /** chats where «➕ Новий проєкт» was pressed: the next message is the project's Notion link */
+  const awaitingProject = new Set<number>();
+
+  async function projectsKeyboard(): Promise<{ text: string; kb: InlineKeyboard }> {
+    const list = await projectsOf(s).list();
+    const active = (await s.settings.get()).activeProjectId;
+    const kb = new InlineKeyboard();
+    list.forEach((p, i) => {
+      kb.text(`${p.id === active ? '● ' : ''}${p.name}`.slice(0, 60), `proj:on:${p.id}`);
+      if (i % 2 === 1) kb.row();
+    });
+    kb.row().text('➕ Новий проєкт', 'proj:new');
+    const text = list.length
+      ? `Проєкти${active ? '' : ' (активного немає)'}. Натисніть, щоб перемкнутися:`
+      : 'Проєктів ще немає. Додайте перший: я прочитаю сторінку проєкту в Notion з усіма підсторінками, файлами й посиланнями.';
+    return { text, kb };
+  }
+
+  bot.command(['project', 'projects'], async (ctx) => {
+    const { text, kb } = await projectsKeyboard();
+    await ctx.reply(text, { reply_markup: kb });
+  });
+
+  async function newProjectFrom(chatId: number, text: string): Promise<void> {
+    const link = findNotionLinks(text)[0];
+    const name = text.replace(link ?? '', '').trim().replace(/^[«"]|[»"]$/g, '');
+    const r = await createProject(s, chatId, { name: name || undefined, notion_link: link });
+    const lead = r.status === 'created' || r.status === 'switched' ? `✅ Проєкт «${r.project}»` : '⚠️';
+    await bot.api.sendMessage(chatId, `${lead}\n${r.note.replace(/ Скажи про це коротко\.$/, '')}`, { link_preview_options: { is_disabled: true } });
+  }
 
   bot.on('message:text', async (ctx) => {
     const text = ctx.message.text;
     if (text.startsWith('/')) return;
-    // forwarded message, or an explicit "gpt:" / "dot:" / "збережи" prefix, is material to file away
-    if (ctx.message.forward_origin || /^(gpt|chatgpt|dot)\s*[:\-]/i.test(text)) {
+    if (awaitingProject.delete(ctx.chat.id)) {
+      if (findNotionLinks(text).length) return void (await newProjectFrom(ctx.chat.id, text));
+      await ctx.reply('Без посилання на Notion створю проєкт лише з назвою — матеріали збиратимуться з чату.');
+      return void (await newProjectFrom(ctx.chat.id, text));
+    }
+    // an explicit "gpt:" / "dot:" prefix: material to file away in Notion «Матеріали»
+    if (/^(gpt|chatgpt|dot)\s*[:\-]/i.test(text)) {
       const body = text.replace(/^(gpt|chatgpt|dot)\s*[:\-]\s*/i, '');
       return void (await startImport(ctx.chat.id, { text: body }));
     }
-    await ask(ctx.chat.id, text, false);
+    // a forwarded letter or a long pasted text is kept in the project, then answered like any message
+    const fwd = ctx.message.forward_origin;
+    const from = fwd ? forwardName(fwd) : '';
+    if (fwd || text.length >= LONG_MESSAGE) {
+      const project = await activeProject(s);
+      const title = `${fwd ? `Переслане${from ? ` від ${from}` : ''}: ` : ''}${text.split('\n')[0]!.slice(0, 80)}`;
+      await projectsOf(s)
+        .addMaterial({ projectId: project?.id, kind: 'chat', title, text, meta: { forwarded: Boolean(fwd), from } })
+        .catch((e) => s.log.warn('chat_material_failed', { error: errMsg(e).slice(0, 200) }));
+    }
+    await ask(ctx.chat.id, fwd ? `[Переслане повідомлення${from ? ` від ${from}` : ''}]\n${text}` : text, false);
   });
 
   // ---------- confirm buttons ----------
 
   bot.on('callback_query:data', async (ctx) => {
     const [ns, action, id, arg] = ctx.callbackQuery.data.split(':');
+    if (ns === 'proj') {
+      if (action === 'new') {
+        awaitingProject.add(ctx.chat?.id ?? ownerId);
+        await ctx.answerCallbackQuery();
+        await ctx.reply('Надішліть посилання на головну сторінку проєкту в Notion (Share → Copy link). Можна разом з назвою, напр.: «Ігристий чай https://www.notion.so/…»');
+        return;
+      }
+      const p = await projectsOf(s).get(Number(id));
+      if (!p) return void (await ctx.answerCallbackQuery({ text: 'Проєкт не знайдено' }));
+      await s.settings.update({ activeProjectId: p.id });
+      await ctx.answerCallbackQuery({ text: p.name });
+      const { text, kb } = await projectsKeyboard();
+      await ctx.editMessageText(text, { reply_markup: kb }).catch(() => {});
+      await s.messages.add(ctx.chat?.id ?? ownerId, 'assistant', `(Власниця перемкнулась на проєкт «${p.name}»)`);
+      return;
+    }
     if (ns !== 'pend' || !id) return void (await ctx.answerCallbackQuery());
     const msg = ctx.callbackQuery.message;
     const edit = (text: string) => (msg ? ctx.editMessageText(text, { parse_mode: 'HTML' }).catch(() => {}) : Promise.resolve());
